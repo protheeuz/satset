@@ -1,34 +1,52 @@
 # Satset ![CI](https://github.com/protheeuz/satset/actions/workflows/build.yml/badge.svg)
+
 ====
 
 **sat·set** /sat-sèt/ *adjective (slang)* — Indonesian colloquialism for being rapid, efficient, and quick to act.
 
 > *"Sat set, sampai."* — Indonesian for "Swiftly done."
 
-Satset is a high-performance networking library for Roblox. It handles the heavy lifting of buffer serialization and state synchronization so you don't have to. It connects the world of low-level data packing (like ByteNet or Zap) with high-level state sync, offering a unified API for both stateless events and delta-compressed channels.
+Satset is a high-performance networking library for Roblox. It handles the heavy lifting of buffer serialization and state synchronization. It connects low-level data packing with high-level state sync, offering a unified API for both stateless events (Packets) and delta-compressed channels.
 
-We built this on a simple philosophy: **if it's on the hot path, it shouldn't allocate.** By using native Luau `buffer` operations and focusing on O(1) operations, Satset stays fast even when you're syncing hundreds of entities every frame.
+The library is built on the principle that code on the hot path should not allocate. By using native Luau `buffer` operations and focusing on O(1) operations, Satset maintains performance even when syncing hundreds of entities per frame.
+
+# Performance Benchmarks
+
+Satset is designed for high-throughput scenarios. We maintain a [benchmark suite](benchmark/Benchmarks.md) that measures Satset against native RemoteEvents and other established libraries:
+
+- **[ByteNet](https://github.com/ffrostfall/ByteNet)**: A buffer-based serialization library.
+- **[BridgeNet2](https://github.com/ffrostfall/BridgeNet2)**: A high-level batching library.
+- **[Warp](https://github.com/imezx/Warp)**: A rapidly-fast networking library.
+
+Detailed methodology and raw data can be found in the [Benchmarks Report](benchmark/Benchmarks.md).
+
+# Documentation
+
+Comprehensive technical documentation is available in the `docs/` directory:
+
+- **[Architecture & Getting Started](docs/guide/getting-started.md)**: High-level overview and initialization.
+- **[API Reference](docs/api/satset.md)**: Detailed breakdown of the `Satset` namespace.
+- **[Security & Guard](docs/guide/security.md)**: Documentation on the token bucket rate limiting implementation.
+- **[Serialization Types](docs/api/types.md)**: Available data types for buffer-backed schemas.
 
 # Features
 
 ### Hybrid Networking Engine
 
-Satset gives you two ways to talk to the network:
+Satset provides two distinct communication modes:
 
-- **Packets (Stateless)**: Great for one-off events like "PlayerJumped" or "EffectSpawned." We batch these automatically every frame, so you're not hammering the engine with dozens of RemoteEvent calls.
-- **Channels (Stateful)**: This is the core of Satset. You define a schema, and we track the changes for you. When you update a field, we only send the delta (the dirty fields) using a bitmask. It's significantly lighter on bandwidth than sending the whole table every time.
+- **Packets (Stateless)**: For one-off events like character actions or effects. These are batched automatically every frame to minimize RemoteEvent overhead.
+- **Channels (Stateful)**: The core state synchronization engine. It tracks changes to a defined schema and transmits only the dirty fields (deltas) using bitmask-based compression.
 
-### Built for speed
+### Implementation Details
 
-- **Zero-GC Pipeline**: We do all the work in pre-allocated buffers. No temporary tables are created during encode or decode, which keeps the garbage collector from slowing down your game.
-- **FASTCALL Integration**: The codebase is written to take advantage of the Luau VM's fastcalls. We localize all the `buffer` and `math` builtins so you get near-native execution speed.
-- **Per-frame Batching**: We don't fire remotes the second you call them. Instead, we wait until `PostSimulation` to flush everything in one go. One remote call per player, per frame. Period.
-
-### Hardened by default
-
-- **Unreliable Transport**: For data that doesn't need to be perfect (like positions), we use `UnreliableRemoteEvent`. We include sequence numbers and stale packet checks so you don't have to deal with out-of-order data.
-- **MTU Safety**: If a batch gets too big, we split it up automatically. You don't have to worry about hitting the 900-byte limit and losing data.
-- **Leaky Bucket Guard**: We've included a built-in rate limiter for the server. It stops exploiters from flooding your remotes and crashing your instances.
+- **Zero-GC Pipeline**: All serialization occurs in pre-allocated buffers. No temporary tables are generated during encoding or decoding, minimizing garbage collector pressure.
+- **Hardened Sanitization**: All floating-point types (`f32`, `f64`, `Vector3`, etc.) are sanitized against `NaN` and `±Infinity` to prevent server-side state corruption.
+- **FASTCALL Optimization**: The implementation utilizes Luau VM [fastcalls](https://luau.org/performance) for buffer and math built-ins to ensure near-native execution speed.
+- **Per-frame Batching**: Remote calls are deferred until `PostSimulation`, ensuring exactly one remote invocation per player per frame.
+- **Reliability Layers**: Native support for [UnreliableRemoteEvent](https://create.roblox.com/docs/reference/engine/classes/UnreliableRemoteEvent) with sequence numbers and stale packet checks.
+- **MTU Management**: Automatic fragmentation for batches exceeding the MTU limit.
+- **Guard**: Built-in server-side rate limiting using a token bucket algorithm to prevent network-based exploits.
 
 # Usage
 
@@ -40,15 +58,9 @@ Add Satset to your `wally.toml`:
 Satset = "mathtech/satset@0.1.0"
 ```
 
-Or use Rokit:
+### Initialization
 
-```bash
-rokit add mathtech/satset
-```
-
-### Getting Started
-
-You need to initialize Satset on both the server and client:
+Initialization is required on both the server and client:
 
 ```luau
 local Satset = require(path.to.Satset)
@@ -70,7 +82,8 @@ local DamagePacket = Satset.definePacket({
     name = "Damage",
     schema = {
         targetId = Types.u32,
-        amount = Types.u16
+        amount = Types.u16,
+        critical = Types.u4 -- Sub-byte types for efficiency
     },
     reliable = true
 })
@@ -95,22 +108,18 @@ local PlayerState = Satset.defineChannel({
         position = Types.Vector3Quantized(2048)
     },
     unreliable = true,
-    resyncInterval = 5 -- Periodic full sync to prevent drift
+    resyncInterval = 5
 })
 
--- Server: Create and Update
+-- Server: Update
 local entity = PlayerState:create(player.UserId)
-entity:set("health", 85) -- Only the 2-byte health field is sent.
+entity:set("health", 85) -- Only the 2-byte health field is transmitted
 
 -- Client: Subscribe
 PlayerState:subscribe(function(entityId, state)
     print("Entity", entityId, "is at", state.position)
 end)
 ```
-
-# Dependencies
-
-Satset is pure Luau and doesn't rely on any external libraries. It does require an environment that supports the Luau `buffer` library and `UnreliableRemoteEvent`.
 
 # License
 
