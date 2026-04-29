@@ -14,6 +14,7 @@ local RunService = game:GetService("RunService")
 
 -- [ Constants ]
 
+local VERSION = "0.1.1"
 local IS_SERVER = RunService:IsServer()
 
 local CHANNEL_RELIABLE_NAME = "__SatsetChannelReliable"
@@ -28,6 +29,7 @@ local channelUnreliable: UnreliableRemoteEvent
 -- [ Public API ]
 
 local Satset = {}
+Satset.Version = VERSION
 
 -- Export types and core definitions so you don't have to require multiple files.
 Satset.Types = Types
@@ -46,6 +48,9 @@ export type SatsetConfig = {
 	the client before using any packets or channels.
 ]]
 function Satset.start(config: SatsetConfig?)
+	local context = if IS_SERVER then "Server" else "Client"
+	print(`[Satset v{VERSION}] Initializing on {context}`)
+
 	-- We initialize the bridge first to ensure remotes are ready.
 	Bridge.init()
 
