@@ -1,5 +1,4 @@
 -- Benchmark server. Receives data from all modes and validates correctness.
-local HttpService = game:GetService("HttpService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Satset = require(ReplicatedStorage.Packages.Satset)
@@ -78,11 +77,8 @@ for name, data in Benches do
 
 		if tool == "roblox" then
 			event.OnServerEvent:Connect(callback)
-		elseif tool == "bridgenet2" then
-			-- BridgeNet2: bridge:Connect(callback(player, data))
-			event:Connect(callback)
-		elseif tool == "warp" then
-			-- Warp: server:Connect(callback(player, ...))
+		elseif tool == "bridgenet2" or tool == "warp" then
+			-- BridgeNet2 and Warp use standard :Connect()
 			event:Connect(callback)
 		elseif event.listen then
 			-- Satset and ByteNet use .listen()

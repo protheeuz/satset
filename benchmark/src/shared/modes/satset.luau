@@ -77,13 +77,12 @@ local Packets = {
 
 -- Wrap with common fire/listen interface for the benchmark runner.
 local Wrapped = {}
-for name, packet in Packets do
+for name, packet: any in Packets do
 	Wrapped[name] = {
 		fire = function(data: any)
 			if RunService:IsClient() then
-				if type(data) == "table" and data[1] ~= nil then
-					packet:fireServer({ value = data })
-				elseif type(data) == "number" then
+				local isWrapped = (type(data) == "table" and data[1] ~= nil) or type(data) == "number"
+				if isWrapped then
 					packet:fireServer({ value = data })
 				else
 					packet:fireServer(data)
