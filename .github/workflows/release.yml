@@ -2,51 +2,33 @@ name: Release
 
 on:
   push:
-    branches: [main]
-    paths:
-      - "CHANGELOG.md"
+    tags:
+      - 'v*'
 
 jobs:
-  release:
-    name: GitHub Release
+  build:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Extract version from CHANGELOG
-        id: version
+      - name: Extract version and title from CHANGELOG
+        id: changelog_info
         run: |
-          # Extract the first versioned header that is not [Unreleased]
-          # Supported format: ## [0.1.0] — 2026-04-29
-          version=$(grep -E "^## \[[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+(\.[0-9]+)?)?\]" CHANGELOG.md | head -1 | sed 's/.*\[\([^]]*\)\].*/\1/')
-
-          if [ -z "$version" ]; then
-            echo "Error: Could not extract version from CHANGELOG.md"
-            exit 1
-          fi
-
+          header_line=$(grep -E "^## \[[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+(\.[0-9]+)?)?\]" CHANGELOG.md | head -1)
+          version=$(echo "$header_line" | sed 's/.*\[\([^]]*\)\].*/\1/')
+          title=$(echo "$header_line" | sed 's/## \[\(.*\)\] — \(.*\)/Release \1 - \2/')
           echo "version=$version" >> $GITHUB_OUTPUT
-          echo "Releasing version: $version"
-
-      - name: Check if tag already exists
-        run: |
-          if git rev-parse "v${{ steps.version.outputs.version }}" >/dev/null 2>&1; then
-            echo "Tag v${{ steps.version.outputs.version }} already exists. Skipping release."
-            exit 0
-          fi
+          echo "title=$title" >> $GITHUB_OUTPUT
 
       - name: Extract changelog for this version
         id: changelog
         run: |
-          version="${{ steps.version.outputs.version }}"
-          
-          # Extract content between the target version header and the next header
+          version="${{ steps.changelog_info.outputs.version }}"
           awk -v ver="$version" '
             BEGIN { found=0; printing=0 }
             /^## \[/ {
@@ -60,20 +42,29 @@ jobs:
             }
             printing { print }
           ' CHANGELOG.md > /tmp/release_notes.txt
-
           {
             echo 'release_notes<<EOF'
             cat /tmp/release_notes.txt
             echo 'EOF'
           } >> $GITHUB_OUTPUT
 
+      - name: Setup Rokit
+        uses: eatmiat/rokit-next@v1
+
+      - name: Install dependencies
+        run: rokit install
+
+      - name: Build RBXM
+        run: rojo build -o Satset-v${{ steps.changelog_info.outputs.version }}.rbxm build.project.json
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: v${{ steps.version.outputs.version }}
-          name: Release v${{ steps.version.outputs.version }}
+          tag_name: v${{ steps.changelog_info.outputs.version }}
+          name: ${{ steps.changelog_info.outputs.title }}
           body: ${{ steps.changelog.outputs.release_notes }}
+          files: |
+            Satset-v${{ steps.changelog_info.outputs.version }}.rbxm
           draft: false
-          prerelease: ${{ contains(steps.version.outputs.version, 'alpha') || contains(steps.version.outputs.version, 'beta') || contains(steps.version.outputs.version, 'rc') }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
