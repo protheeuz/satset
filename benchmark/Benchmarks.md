@@ -1,6 +1,6 @@
 # Satset Networking Benchmarks
 
-*Last Updated: 2026-04-30 — v0.1.1 (with buffer bounds checking, xpcall listener protection, and double-start guard)*
+*Last Updated: 2026-04-30 — v0.1.2 (with buffer bounds checking, xpcall listener protection, and double-start guard)*
 
 This document records the measured performance of **Satset** against native Roblox remotes and other community networking libraries under identical stress conditions.
 
