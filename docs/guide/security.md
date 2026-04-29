@@ -27,6 +27,17 @@ All incoming data is sanitized:
 - **Type Checking**: Satset ensures that data is read according to the schema. If a client sends a payload that is shorter than expected for a given type, the read operation will fail safely.
 - **NaN/Infinity Protection**: All float types (`f32`, `f64`, `Vector3`, `Vector2`, `CFrame`) pass through a sanitization layer that clamps `NaN` and `±Infinity` to `0` on both read and write paths.
 - **Bounds Checking**: Satset ensures that buffer reads never exceed the length of the received data.
+- **Variable-Length Protection**: Types like `string8`, `string16`, `array`, and `map` validate the declared length prefix against the remaining buffer before reading. A malicious client that sends a length of 255 on a 3-byte buffer will get an empty string instead of a VM crash.
+
+## Listener Protection
+
+All user-registered callbacks (both `Packet:listen` and `Channel:subscribe`) are wrapped in `xpcall`. If your callback throws an error, it will:
+
+1. Be caught and reported via `warn` with the packet/channel name and the error message.
+2. Not affect any other listeners registered on the same packet or channel.
+3. Not halt the library's internal dispatch loop.
+
+This prevents a single broken game script from taking down the entire networking layer.
 
 ## Stateless Design
 

@@ -6,7 +6,7 @@ The main entry point for the library.
 
 ### `Satset.start(config: SatsetConfig?)`
 
-Initializes the networking engine. Must be called once on both server and client.
+Initializes the networking engine. Must be called once on both server and client. Calling it more than once is safe — subsequent calls are ignored with a warning.
 
 - **config**: Optional configuration object.
   - **guard**: Guard configuration (see [Guard API](./guard.md)).
@@ -20,6 +20,10 @@ Defines a new stateless packet.
 Defines a new stateful channel.
 
 ## Properties
+
+### `Satset.Version`
+
+A string containing the current library version (e.g. `"0.1.1"`).
 
 ### `Satset.Types`
 

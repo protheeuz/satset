@@ -48,3 +48,49 @@ Satset uses a specific naming convention to maintain code clarity across the lib
 * **camelCase**: Used for public API methods, local variables, and object properties (e.g., `definePacket`, `channelId`, `maxTokens`).
 * **_camelCase** (Leading underscore): Used for internal/private state or functions that should not be accessed by the public API (e.g., `_guard`, `_applyUpdate`).
 * **SCREAMING_SNAKE_CASE**: Used for constants and environment flags (e.g., `IS_SERVER`, `MTU_LIMIT`).
+
+---
+
+## Change checklist
+
+When you modify any part of Satset, use this checklist to make sure nothing falls out of sync. Not every change touches every item, but you should actively consider each one.
+
+### If you change a public API method or add a new one
+
+* [ ] Update the corresponding file in `docs/api/` (e.g., `packet.md`, `channel.md`, `satset.md`).
+* [ ] Update `docs/guide/getting-started.md` if the change affects the onboarding flow.
+* [ ] Add or update code examples that reference the method.
+
+### If you add or modify a type in `Types/init.luau`
+
+* [ ] Update `docs/api/types.md` with the new type signature and size.
+* [ ] If the type has security implications (sanitization, bounds checks), update `docs/guide/security.md`.
+* [ ] Run the benchmark suite and update `benchmark/Benchmarks.md` if performance characteristics change.
+
+### If you change serialization or buffer handling
+
+* [ ] Verify `docs/guide/architecture.md` still accurately describes the pipeline.
+* [ ] Update `docs/guide/development-patterns.md` if the change introduces a new pattern or modifies an existing one.
+* [ ] Update `docs/guide/security.md` if the change affects validation or sanitization.
+
+### If you change error handling or dispatch behavior
+
+* [ ] Update `docs/guide/security.md` (Listener Protection section).
+* [ ] Update the relevant API doc (`packet.md` or `channel.md`) to reflect new error behavior.
+
+### If you bump the version (maintainers only)
+
+Version bumps and releases are handled by project maintainers, not contributors. The release workflow is triggered by pushing a `v*` tag to `main`.
+
+Before creating the tag, update these three files:
+
+* [ ] `CHANGELOG.md` — Add a new version header with changes.
+* [ ] `wally.toml` — Update the `version` field.
+* [ ] `src/init.luau` — Update the `VERSION` constant.
+
+Then push the tag (e.g. `git tag v0.2.0 && git push origin v0.2.0`) to trigger the GitHub Release.
+
+### If you change the benchmark harness
+
+* [ ] Re-run benchmarks in Studio and update `benchmark/Benchmarks.md` with fresh data.
+* [ ] Replace the raw JSON block at the bottom of `Benchmarks.md`.

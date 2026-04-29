@@ -28,7 +28,7 @@ type ChannelConfig = {
 
 ### `:subscribe(callback: (entityId: number, state: table) -> ())`
 
-**Client Only.** Registers a listener for state updates. The callback is triggered whenever any field in the entity changes.
+**Client Only.** Registers a listener for state updates. The callback is triggered whenever any field in the entity changes. Subscribers are wrapped in `xpcall`, so an error in one subscriber will not affect others or halt state synchronization.
 
 ## Entity Object
 

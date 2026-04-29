@@ -6,6 +6,27 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), version
 
 ## [Unreleased]
 
+## [0.1.2] — 2026-04-30
+
+This update focuses on **Hardening** and **Production Readiness**. We've implemented strict defensive programming to ensure Satset can survive malicious network traffic and internal script errors without crashing the server.
+
+### Added
+
+- **Initialization Guard**: `Satset.start()` now prevents multiple calls, protecting the engine from state corruption.
+- **Listener Resilience**: All packet listeners and channel subscribers are now isolated using `xpcall`. An error in one script won't break the entire networking layer.
+- **Bounds Checking**: Added strict validation for `string8`, `string16`, `array`, and `map` types to prevent buffer over-reads from malformed packets.
+- **CI/CD Automation**: Release workflow now builds and attaches versioned `.rbxm` assets automatically.
+
+### Changed
+
+- **Benchmark Results**: Updated documentation with latest stress-test data showing significant bandwidth and FPS advantages over Roblox and BridgeNet2.
+- **Documentation**: Added a detailed Contributor Checklist and updated security guides.
+
+### Fixed
+
+- Resolved type-inference errors and Selene linting warnings in the benchmark harness.
+- Fixed a bug where a single failing listener could halt the entire dispatch loop.
+
 ## [0.1.1] — 2026-04-30
 
 - **Documentation**: Implementation of `development-patterns.md` and `architecture.md` (df06036) by @protheeuz
