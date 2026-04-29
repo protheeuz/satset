@@ -1,4 +1,13 @@
-# Satset ![CI](https://github.com/protheeuz/satset/actions/workflows/build.yml/badge.svg)
+<div align="center">
+
+# Satset
+
+![CI](https://github.com/kurang-dana/satset/actions/workflows/build.yml/badge.svg)
+![Version](https://img.shields.io/github/v/release/kurang-dana/satset?label=version&color=orange)
+![Platform](https://img.shields.io/badge/platform-Roblox-00A2FF)
+![License](https://img.shields.io/github/license/kurang-dana/satset?color=blue)
+
+</div>
 
 **sat·set** /sat-sèt/ *adjective (slang)* — Indonesian colloquialism for being rapid, efficient, and quick to act.
 
