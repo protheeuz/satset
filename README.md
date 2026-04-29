@@ -2,10 +2,10 @@
 
 # Sat·Set
 
-![CI](https://github.com/kurang-dana/satset/actions/workflows/build.yml/badge.svg)
-![Version](https://img.shields.io/github/v/release/kurang-dana/satset?label=version&color=orange)
+![CI](https://github.com/bookek/satset/actions/workflows/build.yml/badge.svg)
+![Version](https://img.shields.io/github/v/release/bookek/satset?label=version&color=orange)
 ![Platform](https://img.shields.io/badge/platform-Roblox-00A2FF)
-![License](https://img.shields.io/github/license/kurang-dana/satset?color=blue)
+![License](https://img.shields.io/github/license/bookek/satset?color=blue)
 
 </div>
 
@@ -123,7 +123,7 @@ For a detailed step-by-step walkthrough of a packet's lifecycle, see the [Archit
 Add Satset to your `wally.toml`:
 
 ```toml
-Satset = "kurang-dana/satset@0.1.0"
+Satset = "bookek/satset@0.1.2"
 ```
 
 Then run `wally install`.
