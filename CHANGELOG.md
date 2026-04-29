@@ -11,10 +11,6 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), version
 - **Documentation**: Implementation of `development-patterns.md` and `architecture.md` (df06036) by @protheeuz
 - **CI/CD**: Added automatic labeling and first-time contributor welcome workflows (df06036) by @protheeuz
 
-### Contributors
-
-[![protheeuz](https://github.com/protheeuz.png?size=35)](https://github.com/protheeuz)
-
 ## [0.1.0] — 2026-04-29
 
 This release is the foundation. I've focused on two things: making the serialization fast by avoiding table allocations, and making the network layer "hardened" so clients can't crash the server with bad data. The core feature is the new Channel system, which handles delta-compression by only sending what actually changed.
@@ -28,10 +24,6 @@ This release is the foundation. I've focused on two things: making the serializa
 - **Batching**: Bundles all remote calls into a single invocation per frame. (a0f0f37) by @protheeuz
 - **Unreliable Protection**: Sequence numbers (u16) on unreliable packets. (a0f0f37) by @protheeuz
 - **Benchmark Tool**: An in-Studio harness to compare bandwidth and FPS against ByteNet and native Roblox remotes. (a0f0f37) by @protheeuz
-
-### Contributors
-
-[![protheeuz](https://github.com/protheeuz.png?size=35)](https://github.com/protheeuz)
 
 ### Changed
 
