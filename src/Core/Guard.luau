@@ -1,5 +1,5 @@
 -- This file is part of the Satset networking library and is licensed under MIT License; see LICENSE.txt for details
--- Guard — server-side leaky bucket rate limiter for DDoS protection.
+-- Guard — server-side token bucket rate limiter for DDoS protection.
 
 -- [ Types ]
 
@@ -41,7 +41,7 @@ Guard.__index = Guard
 --[[
 	Creates a new Guard instance. 
 	
-	The guard implements a leaky bucket algorithm to prevent players from 
+	The guard implements a token bucket algorithm to prevent players from 
 	spamming the server. If a player exceeds the maxTokens, their packets 
 	will be dropped until the bucket refills.
 ]]

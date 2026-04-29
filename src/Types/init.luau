@@ -26,6 +26,7 @@ local round = math.round
 local sqrt = math.sqrt
 local abs = math.abs
 local max = math.max
+local huge = math.huge
 
 -- [ Types ]
 
@@ -45,6 +46,15 @@ local function fixedSize(size: number)
 	return function()
 		return size
 	end
+end
+
+-- Clamps NaN and ±Infinity to 0. Prevents malicious clients from
+-- injecting poisoned floats that propagate through server arithmetic.
+local function sanitizeFloat(v: number): number
+	if v ~= v or v == huge or v == -huge then
+		return 0
+	end
+	return v
 end
 
 -- [ Primitives ]
@@ -98,16 +108,24 @@ Types.i32 = {
 }
 
 Types.f32 = {
-	read = readf32,
-	write = writef32,
+	read = function(b: buffer, cursor: number)
+		return sanitizeFloat(readf32(b, cursor))
+	end,
+	write = function(b: buffer, cursor: number, value: number)
+		writef32(b, cursor, sanitizeFloat(value))
+	end,
 	size = 4,
 	getSize = fixedSize(4),
 	isFixed = true,
 }
 
 Types.f64 = {
-	read = readf64,
-	write = writef64,
+	read = function(b: buffer, cursor: number)
+		return sanitizeFloat(readf64(b, cursor))
+	end,
+	write = function(b: buffer, cursor: number, value: number)
+		writef64(b, cursor, sanitizeFloat(value))
+	end,
 	size = 8,
 	getSize = fixedSize(8),
 	isFixed = true,
@@ -119,6 +137,18 @@ Types.bool = {
 	end,
 	write = function(b: buffer, cursor: number, value: boolean)
 		writeu8(b, cursor, value and 1 or 0)
+	end,
+	size = 1,
+	getSize = fixedSize(1),
+	isFixed = true,
+}
+
+Types.u4 = {
+	read = function(b: buffer, cursor: number)
+		return bit32.band(readu8(b, cursor), 0xF)
+	end,
+	write = function(b: buffer, cursor: number, value: number)
+		writeu8(b, cursor, bit32.band(value, 0xF))
 	end,
 	size = 1,
 	getSize = fixedSize(1),
@@ -165,12 +195,16 @@ Types.string16 = {
 
 Types.Vector3 = {
 	read = function(b: buffer, cursor: number)
-		return Vector3.new(readf32(b, cursor), readf32(b, cursor + 4), readf32(b, cursor + 8))
+		return Vector3.new(
+			sanitizeFloat(readf32(b, cursor)),
+			sanitizeFloat(readf32(b, cursor + 4)),
+			sanitizeFloat(readf32(b, cursor + 8))
+		)
 	end,
 	write = function(b: buffer, cursor: number, value: Vector3)
-		writef32(b, cursor, value.X)
-		writef32(b, cursor + 4, value.Y)
-		writef32(b, cursor + 8, value.Z)
+		writef32(b, cursor, sanitizeFloat(value.X))
+		writef32(b, cursor + 4, sanitizeFloat(value.Y))
+		writef32(b, cursor + 8, sanitizeFloat(value.Z))
 	end,
 	size = 12,
 	getSize = fixedSize(12),
@@ -179,11 +213,11 @@ Types.Vector3 = {
 
 Types.Vector2 = {
 	read = function(b: buffer, cursor: number)
-		return Vector2.new(readf32(b, cursor), readf32(b, cursor + 4))
+		return Vector2.new(sanitizeFloat(readf32(b, cursor)), sanitizeFloat(readf32(b, cursor + 4)))
 	end,
 	write = function(b: buffer, cursor: number, value: Vector2)
-		writef32(b, cursor, value.X)
-		writef32(b, cursor + 4, value.Y)
+		writef32(b, cursor, sanitizeFloat(value.X))
+		writef32(b, cursor + 4, sanitizeFloat(value.Y))
 	end,
 	size = 8,
 	getSize = fixedSize(8),
@@ -239,6 +273,32 @@ function Types.Vector3Quantized(range: number?): Type<Vector3>
 end
 
 --[[
+	Vector2Quantized: compressed 4-byte Vector2.
+	
+	Same quantization approach as Vector3Quantized but for 2D coordinates.
+	Provides ~0.03 stud precision at the default 1024-stud range.
+]]
+function Types.Vector2Quantized(range: number?): Type<Vector2>
+	local r = range or 1024
+	local SCALE = 32767 / r
+
+	return {
+		read = function(b: buffer, cursor: number)
+			local x = readi16(b, cursor) / SCALE
+			local y = readi16(b, cursor + 2) / SCALE
+			return Vector2.new(x, y)
+		end,
+		write = function(b: buffer, cursor: number, value: Vector2)
+			writei16(b, cursor, clamp(round(value.X * SCALE), -32767, 32767))
+			writei16(b, cursor + 2, clamp(round(value.Y * SCALE), -32767, 32767))
+		end,
+		size = 4,
+		getSize = fixedSize(4),
+		isFixed = true,
+	}
+end
+
+--[[
 	CFrame: high-efficiency 18-byte CFrame.
 	
 	Uses "smallest-three" quaternion compression. We drop the largest 
@@ -247,7 +307,9 @@ end
 ]]
 Types.CFrame = {
 	read = function(b: buffer, cursor: number)
-		local px, py, pz = readf32(b, cursor), readf32(b, cursor + 4), readf32(b, cursor + 8)
+		local px = sanitizeFloat(readf32(b, cursor))
+		local py = sanitizeFloat(readf32(b, cursor + 4))
+		local pz = sanitizeFloat(readf32(b, cursor + 8))
 		local raw_a = readi16(b, cursor + 12)
 		local raw_b = readi16(b, cursor + 14)
 		local raw_c = readi16(b, cursor + 16)
@@ -298,9 +360,9 @@ Types.CFrame = {
 
 	write = function(b: buffer, cursor: number, value: CFrame)
 		local components = { value:GetComponents() }
-		writef32(b, cursor, components[1])
-		writef32(b, cursor + 4, components[2])
-		writef32(b, cursor + 8, components[3])
+		writef32(b, cursor, sanitizeFloat(components[1]))
+		writef32(b, cursor + 4, sanitizeFloat(components[2]))
+		writef32(b, cursor + 8, sanitizeFloat(components[3]))
 
 		local r00, r01, r02 = components[4], components[5], components[6]
 		local r10, r11, r12 = components[7], components[8], components[9]
