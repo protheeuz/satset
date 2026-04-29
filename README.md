@@ -1,7 +1,5 @@
 # Satset ![CI](https://github.com/protheeuz/satset/actions/workflows/build.yml/badge.svg)
 
-====
-
 **sat·set** /sat-sèt/ *adjective (slang)* — Indonesian colloquialism for being rapid, efficient, and quick to act.
 
 > *"Sat set, sampai."* — Indonesian for "Swiftly done."
@@ -116,7 +114,7 @@ For a detailed step-by-step walkthrough of a packet's lifecycle, see the [Archit
 Add Satset to your `wally.toml`:
 
 ```toml
-Satset = "protheeuz/satset@0.1.0"
+Satset = "kurang-dana/satset@0.1.0"
 ```
 
 Then run `wally install`.
