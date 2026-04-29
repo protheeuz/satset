@@ -1,0 +1,33 @@
+name: Pull Request
+
+on:
+  pull_request:
+    types: [opened, reopened]
+
+jobs:
+  welcome:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: read
+    steps:
+      - name: First-time Contributor Welcome
+        uses: actions/first-interaction@v1
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          pr-message: |
+            Hello @${{ github.actor }}, thank you for opening your first pull request in Satset! 🚀
+            
+            We appreciate your contribution. A maintainer will review your changes shortly. Please ensure you have followed our [Contributing Guidelines](CONTRIBUTING.md).
+            
+            Happy coding! >.<
+
+  labeling:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Auto Labeling
+        uses: actions-ecosystem/action-add-labels@v1
+        with:
+          labels: enhancement
