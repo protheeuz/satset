@@ -1,7 +1,7 @@
 [package]
-name = "kurang-dana/satset"
+name = "bookek/satset"
 description = "High-performance, buffer-backed hybrid networking for Roblox with zero-allocation delta synchronization."
-version = "0.1.0"
+version = "0.1.2"
 license = "MIT"
 authors = ["Iqbal F"]
 registry = "https://github.com/UpliftGames/wally-index"
@@ -13,9 +13,12 @@ exclude = [
 	"package.json",
 	"stylua.toml",
 	"selene.toml",
+	"benchmark/",
+	"docs/",
+	"tests/",
 ]
 
-[dependencies]
+[dev-dependencies]
 ByteNet = "ffrostflame/bytenet@0.4.6"
 BridgeNet2 = "ffrostflame/bridgenet2@1.0.0"
 Warp = "imezx/warp@1.0.0"

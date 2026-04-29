@@ -8,7 +8,7 @@ Add Satset to your `wally.toml`:
 
 ```toml
 [dependencies]
-Satset = "protheeuz/satset@0.1.0"
+Satset = "bookek/satset@0.1.2"
 ```
 
 Then run:
@@ -19,7 +19,7 @@ wally install
 
 ## Manual Installation
 
-1. Download the latest `satset.rbxm` from the [Releases](https://github.com/protheeuz/satset/releases) page.
+1. Download the latest `satset.rbxm` from the [Releases](https://github.com/bookek/satset/releases) page.
 2. Drag and drop it into `ReplicatedStorage` in your Roblox Studio place.
 
 ## Rojo
