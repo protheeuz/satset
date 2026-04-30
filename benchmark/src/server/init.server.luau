@@ -1,7 +1,7 @@
 -- Benchmark server. Receives data from all modes and validates correctness.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Satset = require(ReplicatedStorage.Packages.Satset)
+local Satset = require(ReplicatedStorage.DevPackages.Satset)
 Satset.start()
 
 local Benches = require(ReplicatedStorage.Shared.benches)
@@ -75,7 +75,8 @@ for name, data in Benches do
 		local event = events[name]
 		local callback = onReceive(tool)
 
-		if tool == "roblox" then
+		if tool == "roblox" or tool == "packet" then
+			-- Roblox and Suphi-Packet use .OnServerEvent
 			event.OnServerEvent:Connect(callback)
 		elseif tool == "bridgenet2" or tool == "warp" then
 			-- BridgeNet2 and Warp use standard :Connect()

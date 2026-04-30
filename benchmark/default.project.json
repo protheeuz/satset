@@ -28,11 +28,14 @@
 					"$className": "RemoteEvent"
 				}
 			},
-			"Packages": {
-				"$path": "../Packages",
+			"DevPackages": {
+				"$path": "../DevPackages",
 				"Satset": {
 					"$path": "../src"
 				}
+			},
+			"SuphiPacket": {
+				"$path": "../references/Suphi-Packet/Packet"
 			}
 		}
 	}
