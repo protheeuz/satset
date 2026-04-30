@@ -7,7 +7,7 @@ local RunService = game:GetService("RunService")
 local StarterGui = game:GetService("StarterGui")
 local Stats = game:GetService("Stats")
 
-local Satset = require(ReplicatedStorage.Packages.Satset)
+local Satset = require(ReplicatedStorage.DevPackages.Satset)
 Satset.start()
 
 local MAXIMUM_FRAMERATE = 60

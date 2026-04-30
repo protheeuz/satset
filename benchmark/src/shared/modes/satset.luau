@@ -1,6 +1,6 @@
 -- Satset benchmark mode.
 local RunService = game:GetService("RunService")
-local Satset = require(game:GetService("ReplicatedStorage").Packages.Satset)
+local Satset = require(game:GetService("ReplicatedStorage").DevPackages.Satset)
 local Types = Satset.Types
 
 -- We don't call Satset.start() here anymore.

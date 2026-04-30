@@ -1,5 +1,5 @@
 -- ByteNet benchmark mode (v0.4.6 API).
-local ByteNet = require(game:GetService("ReplicatedStorage").Packages.ByteNet)
+local ByteNet = require(game:GetService("ReplicatedStorage").DevPackages.ByteNet)
 
 -- ByteNet 0.4.6 requires the schema to be in the 'value' field.
 return ByteNet.defineNamespace("Benchmark", function()

@@ -1,7 +1,7 @@
 -- Warp benchmark mode (v1.0.14 API).
 -- Warp uses string identifiers. Server/Client are separate constructors.
 local RunService = game:GetService("RunService")
-local Warp = require(game:GetService("ReplicatedStorage").Packages.Warp)
+local Warp = require(game:GetService("ReplicatedStorage").DevPackages.Warp)
 
 local Benches = require(game:GetService("ReplicatedStorage").Shared.benches)
 

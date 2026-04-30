@@ -1,6 +1,6 @@
 -- BridgeNet2 benchmark mode (v1.0.0 API).
 -- BridgeNet2 uses ReferenceBridge with string identifiers.
-local BridgeNet2 = require(game:GetService("ReplicatedStorage").Packages.BridgeNet2)
+local BridgeNet2 = require(game:GetService("ReplicatedStorage").DevPackages.BridgeNet2)
 
 local Benches = require(game:GetService("ReplicatedStorage").Shared.benches)
 
