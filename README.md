@@ -34,8 +34,13 @@ Comprehensive technical documentation is available in the `docs/` directory:
 
 - **[Architecture & Getting Started](docs/guide/getting-started.md)**: High-level overview and initialization.
 - **[API Reference](docs/api/satset.md)**: Detailed breakdown of the `Satset` namespace.
+- **[Development Patterns](docs/guide/development-patterns.md)**: Design principles and performance constraints.
 - **[Security & Guard](docs/guide/security.md)**: Documentation on the token bucket rate limiting implementation.
 - **[Serialization Types](docs/api/types.md)**: Available data types for buffer-backed schemas.
+
+# Contributing
+
+Contributions are welcome! Please review our **[Contribution Guide](CONTRIBUTING.md)** and **[Development Patterns](docs/guide/development-patterns.md)** before submitting a pull request.
 
 # Features
 

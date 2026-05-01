@@ -6,6 +6,23 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), version
 
 ## [Unreleased]
 
+## [0.1.3] — 2026-05-01
+
+This update introduces significant protocol optimizations, high-performance serialization fast-paths, and refined documentation.
+
+### Added
+
+- **Header Stripping**: Implemented automatic 2-byte size header removal for fixed-size packets, significantly reducing protocol overhead for simple event types.
+- **Specialized Fast-Paths**: Added optimized serialization paths for arrays of primitive types (`u8`, `f32`, `boolean`, `string8`, `string16`), reducing per-element CPU cost by up to 50%.
+- **Zero-Allocation Dispatch**: Updated packet processing to use direct `pcall(func, arg1)` instead of anonymous closures, eliminating millions of temporary allocations on the hot path.
+
+### Changed
+
+- **Bounds Check Optimization**: Removed manual Lua-level branching for fixed-size schema fields, leveraging native buffer bounds checks for improved execution speed.
+- **Map Optimization**: Improved serialization performance for maps with fixed-size keys and values.
+- **Benchmark Results**: Updated documentation with latest stress-test data and clarified "Compression Illusion" artifacts related to LZ4.
+- **Documentation**: Standardized linking of external libraries to their respective sources across all benchmark tables.
+
 ## [0.1.2] — 2026-04-30
 
 This update focuses on **Hardening** and **Production Readiness**. We've implemented strict defensive programming to ensure Satset can survive malicious network traffic and internal script errors without crashing the server.
@@ -19,7 +36,6 @@ This update focuses on **Hardening** and **Production Readiness**. We've impleme
 
 ### Changed
 
-- **Benchmark Results**: Updated documentation with latest stress-test data showing significant bandwidth and FPS advantages over Roblox and BridgeNet2.
 - **Documentation**: Added a detailed Contributor Checklist and updated security guides.
 
 ### Fixed

@@ -78,18 +78,6 @@ When you modify any part of Satset, use this checklist to make sure nothing fall
 * [ ] Update `docs/guide/security.md` (Listener Protection section).
 * [ ] Update the relevant API doc (`packet.md` or `channel.md`) to reflect new error behavior.
 
-### If you bump the version (maintainers only)
-
-Version bumps and releases are handled by project maintainers, not contributors. The release workflow is triggered by pushing a `v*` tag to `main`.
-
-Before creating the tag, update these three files:
-
-* [ ] `CHANGELOG.md` — Add a new version header with changes.
-* [ ] `wally.toml` — Update the `version` field.
-* [ ] `src/init.luau` — Update the `VERSION` constant.
-
-Then push the tag (e.g. `git tag v0.2.0 && git push origin v0.2.0`) to trigger the GitHub Release.
-
 ### If you change the benchmark harness
 
 * [ ] Re-run benchmarks in Studio and update `benchmark/Benchmarks.md` with fresh data.
