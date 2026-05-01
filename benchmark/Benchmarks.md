@@ -101,6 +101,14 @@ Delivered 100% of packets, but only after we manually turned off the built-in ra
 
 Solid reliability but uses a lot of bandwidth because it relies on Roblox's default encoding. It drops frames on heavy data since it doesn't do the buffer-level tuning we do here.
 
+### Warp (v1.18.8)
+
+Warp recorded zero received packets on every test in our benchmark harness. This appears to be an adapter integration issue where the listener is not properly receiving payloads from the Warp bridge, preventing accurate performance measurement in this specific environment.
+
+### Red (v0.6.28)
+
+Red experiences a "Variant limit" crash on high-volume structured tests. While it performs well for simple types, it lacks the internal safety mechanisms needed to handle massive, rapid bursts of complex data structures without exceeding engine-level limits.
+
 ---
 
 ## 5. Methodology
