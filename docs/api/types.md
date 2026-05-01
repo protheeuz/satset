@@ -19,22 +19,22 @@ Standard and optimized types for schemas.
 
 ## Strings
 
-- `string8`: Max length 255 chars (1 + N bytes).
-- `string16`: Max length 65,535 chars (2 + N bytes).
+- `string8`: Max length 255 chars (1 + N bytes). Consists of a 1-byte `u8` length header followed by N bytes of UTF-8 string data.
+- `string16`: Max length 65,535 chars (2 + N bytes). Consists of a 2-byte `u16` length header followed by N bytes of UTF-8 string data.
 
 ## Roblox Types
 
-- `Vector3`: Standard IEEE 754 f32 (12 bytes).
-- `Vector2`: Standard IEEE 754 f32 (8 bytes).
-- `Color3`: Compressed RGB (3 bytes, 1 byte per channel).
-- `CFrame`: Compressed using **"smallest-three" quaternion compression** (18 bytes). We omit the largest quaternion component and reconstruct it on the receiver, saving over 10 bytes per frame.
+- `Vector3`: Standard [IEEE 754 single-precision floating-point format](https://en.wikipedia.org/wiki/Single-precision_floating-point_format) (12 bytes). It writes three 4-byte `f32` values (X, Y, Z).
+- `Vector2`: Standard [IEEE 754 single-precision floating-point format](https://en.wikipedia.org/wiki/Single-precision_floating-point_format) (8 bytes). It writes two 4-byte `f32` values (X, Y).
+- `Color3`: Compressed RGB (3 bytes). We extract the R, G, and B color channels and write each as a single 1-byte `u8` integer (0-255).
+- `CFrame`: Compressed using **"smallest-three" quaternion compression** (18 bytes). Standard uncompressed [Roblox CFrames](https://create.roblox.com/docs/reference/engine/datatypes/CFrame) contain a Vector3 position and a 9-element rotation matrix. Satset compresses the rotation into a quaternion, omits the largest component, and transmits only the 3 smallest components alongside the position.
 
 ## Collections
 
-- `optional(type)`: Nullable type. Adds a **1-byte header** to check for `nil`.
-- `array(type)`: Array of a specific type. Includes a **2-byte header** for length (max 65,535 elements).
-- `map(keyType, valType)`: Dictionary mapping. Includes a **2-byte header** for element count. Keys are sorted alphabetically during serialization to ensure deterministic output.
-- `enum(values: {string})`: Efficient mapping. Converts string constants into a **single u8 index**.
+- `optional(type)`: Nullable type. Adds a **1-byte header** (a `u8` boolean flag) to check for `nil`.
+- `array(type)`: Array of a specific type. Includes a **2-byte header** (a `u16` integer) for length (max 65,535 elements) followed by the array elements.
+- `map(keyType, valType)`: Dictionary mapping. Includes a **2-byte header** (a `u16` integer) for element count. Keys are sorted alphabetically during serialization to ensure deterministic byte order output.
+- `enum(values: {string})`: Efficient mapping. Converts string constants into a **single 1-byte `u8` index** corresponding to its array position.
 
 ## Specialized
 

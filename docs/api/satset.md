@@ -23,7 +23,7 @@ Defines a new stateful channel.
 
 ### `Satset.Version`
 
-A string containing the current library version (e.g. `"0.1.2"`).
+A string containing the current library version (e.g. `"0.1.3"`).
 
 ### `Satset.Types`
 

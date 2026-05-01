@@ -12,6 +12,5 @@ wally.lock
 
 # Sourcemap
 sourcemap.json
-Packages/
 references/
 DevPackages/

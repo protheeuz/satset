@@ -13,21 +13,24 @@ Satset.start({
     guard = {
         maxTokens = 60, -- Max burst capacity
         refillRate = 30, -- Tokens refilled per second
+        studioBypass = true -- Disable rate limiting in Studio (Default: true)
     }
 })
 ```
 
-- **maxTokens**: The maximum number of tokens a player can hold. This allows for small "bursts" of packets.
-- **refillRate**: How many tokens are added to the bucket every second.
+- **maxTokens**: The maximum tokens a player can hold. We enforce a minimum of 1 to prevent misconfiguration from breaking the network.
+- **refillRate**: Tokens added to the bucket every second.
+- **studioBypass**: Skips rate limiting in Roblox Studio so you can stress test locally. The server ignores this setting in published games.
 
-## Sanitization
+When a player exceeds their limit, the Guard drops the packet silently. We do not print warnings to the console, which prevents exploiters from weaponizing log messages to cause server lag.
 
-All incoming data is sanitized:
+## Memory and Bounds Protection
 
-- **Type Checking**: Satset ensures that data is read according to the schema. If a client sends a payload that is shorter than expected for a given type, the read operation will fail safely.
-- **NaN/Infinity Protection**: All float types (`f32`, `f64`, `Vector3`, `Vector2`, `CFrame`) pass through a sanitization layer that clamps `NaN` and `±Infinity` to `0` on both read and write paths.
-- **Bounds Checking**: Satset ensures that buffer reads never exceed the length of the received data.
-- **Variable-Length Protection**: Types like `string8`, `string16`, `array`, and `map` validate the declared length prefix against the remaining buffer before reading. A malicious client that sends a length of 255 on a 3-byte buffer will get an empty string instead of a VM crash.
+We treat all incoming client data as hostile. If an exploiter sends a corrupted or spoofed packet, the server must not crash or lag.
+
+- **OOB Shielding**: We wrap all packet decoding in a `pcall`. If a malicious client truncates a buffer to force an out-of-bounds read, the operation fails silently. The server drops the packet without printing stack traces to the console.
+- **Allocation Capping**: When reading variable-length types like arrays or strings, we cap the `table.create` allocation to the actual remaining bytes in the buffer. If an exploiter sends a 4-byte payload claiming to contain 65,000 elements, Satset limits the array size to match the buffer. This stops memory exhaustion and garbage collector spikes.
+- **Float Sanitization**: We clamp `NaN` and `±Infinity` to `0` when reading or writing floating-point numbers (`f32`, `f64`, `Vector3`). This prevents corrupted math from infecting the server state.
 
 ## Listener Protection
 

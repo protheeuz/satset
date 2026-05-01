@@ -43,7 +43,7 @@ sequenceDiagram
     Note over BT: PostSimulation fires once per frame
 
     BT->>BT: encodeBatch(queue)
-    Note right of BT: Wire: [u8 count][u8 id, u16 size, payload]...
+    Note right of BT: Wire: [u8 count][u8 id, (opt u16 size), payload]...
     BT->>BR: getReliable()
     BR->>RE: FireServer(batchBuffer)
 
@@ -56,11 +56,16 @@ sequenceDiagram
         PK->>BT: decodeBatch(batchBuffer)
         BT-->>PK: entries[]
         loop For each entry
+            PK->>PK: pcall(decode)
             PK->>SR: decode(compiledSchema, entryPayload)
             SR->>SN: sanitizeFloat(value) for each number field
             SR->>SN: checkBounds(buffer, cursor, size)
             SR-->>PK: decoded data table
-            PK->>Dev: listener(data, sender)
+            alt pcall succeeds
+                PK->>Dev: listener(data, sender)
+            else buffer out-of-bounds
+                PK--xPK: silent drop
+            end
         end
     else Token exhausted
         GD--xPK: packet dropped silently
@@ -71,8 +76,8 @@ sequenceDiagram
 
 ```luau
 [u8 packetCount]
-  [u8 packetId][u16 payloadSize][...payload bytes]
-  [u8 packetId][u16 payloadSize][...payload bytes]
+  [u8 packetId][u16 payloadSize][...payload bytes] (Variable size)
+  [u8 packetId][...payload bytes] (Fixed size - size header omitted)
   ...
 ```
 
@@ -82,7 +87,8 @@ Unreliable batches include a sequence number for stale packet detection. If the 
 
 ```luau
 [u16 sequenceNumber][u8 packetCount]
-  [u8 packetId][u16 payloadSize][...payload bytes]
+  [u8 packetId][u16 payloadSize][...payload bytes] (Variable)
+  [u8 packetId][...payload bytes] (Fixed)
   ...
 ```
 
@@ -146,11 +152,11 @@ When `dirtyMask == 0xFFFFFFFF` (all bits set), the payload contains the full sta
 
 Channels periodically send a full keyframe to prevent client-side state drift caused by dropped unreliable packets. The default interval is 5 seconds, configurable via `resyncInterval` in the channel definition. During a resync frame, all entities in the channel receive a full state transmission regardless of their dirty mask.
 
-## Sanitization Pipeline
+## Validation Pipeline
 
-All incoming float values pass through a two-stage validation before reaching the developer's listener:
+Satset processes incoming data through a strict validation stack before it reaches the developer's listener:
 
-1. **Bounds Check** (`Sanitizer.checkBounds`): Ensures the buffer read will not exceed the buffer length.
-2. **Float Sanitization** (`Sanitizer.sanitizeFloat`): Clamps `NaN` and `Infinity` to `0` using the IEEE 754 identity `v ~= v` for NaN detection.
-
-Additionally, `Types/init.luau` applies `sanitizeFloat` directly in the `read` function of `f32`, `f64`, `Vector3`, `Vector2`, and `CFrame` types. This means float values are sanitized at both the type level and the serializer level.
+1. **OOB Shielding (`pcall`)**: All packet decoding runs inside a protected call. If a malicious payload forces a read past the end of the buffer, the VM throws an error that is immediately caught and silenced.
+2. **Allocation Capping (`table.create`)**: Variable-length types (arrays, strings, maps) mathematically limit their allocations based on the remaining bytes in the payload. This prevents exploiters from crashing the server with massive GC spikes.
+3. **Float Sanitization (`Sanitizer.sanitizeFloat`)**: All floating-point fields (`f32`, `f64`, `Vector3`, etc.) are clamped to prevent `NaN` and `Infinity` from propagating into game logic.
+4. **Schema Verification (`Sanitizer.checkBounds`)**: For fixed-size schema fields, the serializer checks that enough bytes remain before executing the read.

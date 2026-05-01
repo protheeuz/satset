@@ -48,13 +48,16 @@ Satset provides two distinct communication modes:
 
 ### Implementation Details
 
-- **Zero-GC Pipeline**: All serialization occurs in pre-allocated buffers. No temporary tables are generated during encoding or decoding, minimizing garbage collector pressure.
-- **Hardened Sanitization**: All floating-point types (`f32`, `f64`, `Vector3`, etc.) are sanitized against `NaN` and `±Infinity` to prevent server-side state corruption.
-- **FASTCALL Optimization**: The implementation utilizes Luau VM [fastcalls](https://luau.org/performance) for buffer and math built-ins to ensure near-native execution speed.
-- **Per-frame Batching**: Remote calls are deferred until `PostSimulation`, ensuring exactly one remote invocation per player per frame.
+- **Zero-Allocation Pipeline**: Everything happens in pre-allocated buffers. We pass arguments directly to `pcall` to avoid closure allocations on the hot path, keeping your FPS steady even under massive stress.
+- **Built-in Security**: We rely on Luau's native buffer bounds checks instead of manual Lua-level branching. If someone sends a bad payload, the global `pcall` catches it without the extra CPU cost of manual checks.
+- **OOM Protection**: We cap dynamic data (like strings and arrays) based on the physical buffer size. This prevents memory exhaustion attacks while maintaining performance.
+- **Sanitized Floats**: All floating-point types (`f32`, `f64`, `Vector3`, etc.) are clamped against `NaN` and `±Infinity` to prevent state corruption.
+- **Native Performance**: We use Luau VM [fastcalls](https://luau.org/performance) for buffer and math built-ins to stay as close to native speed as possible.
+- **Smart Batching**: Remote calls are deferred until `PostSimulation`, ensuring exactly one remote invocation per player per frame.
 - **Reliability Layers**: Native support for [UnreliableRemoteEvent](https://create.roblox.com/docs/reference/engine/classes/UnreliableRemoteEvent) with sequence numbers and stale packet checks.
-- **MTU Management**: Automatic fragmentation for batches exceeding the MTU limit.
-- **Guard**: Built-in server-side rate limiting using a token bucket algorithm to prevent network-based exploits.
+- **Header Stripping**: Automatically identifies fixed-size schemas and omits the 2-byte size header. This reduces protocol overhead by up to 40% for small, frequent packets.
+- **MTU Management**: Automatic fragmentation for batches exceeding the [MTU](https://en.wikipedia.org/wiki/Maximum_transmission_unit) limit.
+- **Guard**: Built-in server-side rate limiting using a token bucket algorithm to prevent spam.
 
 # Architecture
 
@@ -124,7 +127,7 @@ For a detailed step-by-step walkthrough of a packet's lifecycle, see the [Archit
 Add Satset to your `wally.toml`:
 
 ```toml
-Satset = "bookek/satset@0.1.2"
+Satset = "bookek/satset@0.1.3"
 ```
 
 Then run `wally install`.
