@@ -139,7 +139,8 @@ local Satset = require(path.to.Satset)
 Satset.start({
     guard = {
         maxTokens = 60,
-        refillRate = 30
+        refillRate = 30,
+        studioBypass = true -- Enabled by default
     }
 })
 ```
