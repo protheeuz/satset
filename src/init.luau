@@ -39,6 +39,7 @@ Satset.defineChannel = Channel.defineChannel
 
 export type SatsetConfig = {
 	guard: Guard.GuardConfig?,
+	batching: Batcher.BatchingConfig?,
 }
 
 --[[
@@ -58,13 +59,18 @@ function Satset.start(config: SatsetConfig?)
 	local context = if IS_SERVER then "Server" else "Client"
 	print(`[Satset v{VERSION}] Initializing on {context}`)
 
+	local cfg: SatsetConfig = config or {} :: SatsetConfig
+
+	-- Apply custom batching configuration if provided.
+	if cfg.batching then
+		Batcher.configure(cfg.batching)
+	end
+
 	-- We initialize the bridge first to ensure remotes are ready.
 	Bridge.init()
 
 	-- The batcher hooks into PostSimulation to flush outgoing data.
 	Batcher.init()
-
-	local cfg: SatsetConfig = config or {} :: SatsetConfig
 
 	-- Dedicated channel folder for organization.
 	local bridgeFolder = game:GetService("ReplicatedStorage"):FindFirstChild("__SatsetBridge")

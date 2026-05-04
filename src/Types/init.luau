@@ -1,7 +1,7 @@
 --!native
 --!optimize 2
 -- This file is part of the Satset networking library and is licensed under MIT License; see LICENSE.txt for details
--- Types — defines all primitive and composite networking types.
+-- Types — provides optimized serialization primitives and composite types.
 
 -- [ Builtin Localization ]
 -- We localize these for GETIMPORT and FASTCALL optimization in the Luau VM.
@@ -284,6 +284,79 @@ function Types.Vector3Quantized(range: number?): Type<Vector3>
 end
 
 --[[
+	Float16: 2-byte floating point.
+	Provides lower precision than f32 but significantly saves bandwidth.
+	Based on Half-Precision (IEEE 754-2008).
+]]
+Types.f16 = {
+	read = function(b: buffer, cursor: number)
+		local raw = readu16(b, cursor)
+		local sign = (bit32.band(raw, 0x8000) ~= 0) and -1 or 1
+		local exp = bit32.rshift(bit32.band(raw, 0x7C00), 10)
+		local frac = bit32.band(raw, 0x03FF)
+		if exp == 0x1F then
+			return (frac == 0) and (sign * huge) or 0 -- NaN as 0 for safety
+		elseif exp == 0 then
+			return sign * (2 ^ -14) * (frac / 1024)
+		else
+			return sign * (2 ^ (exp - 15)) * (1 + frac / 1024)
+		end
+	end,
+	write = function(b: buffer, cursor: number, value: number)
+		if value ~= value then
+			writeu16(b, cursor, 0)
+			return
+		end
+		local sign = 0
+		if value < 0 then
+			sign = 0x8000
+			value = -value
+		end
+		local exp, frac
+		if value > 65504 then
+			exp, frac = 0x1F, 0
+		elseif value <= 2 ^ -24 then
+			exp, frac = 0, 0
+		elseif value < 2 ^ -14 then
+			exp, frac = 0, round(value / (2 ^ -24))
+		else
+			local log2 = math.log(value, 2)
+			exp = floor(log2)
+			frac = round((value / (2 ^ exp) - 1) * 1024)
+			if frac == 1024 then
+				exp += 1
+				frac = 0
+			end
+			exp += 15
+		end
+		writeu16(b, cursor, bit32.bor(sign, bit32.lshift(exp, 10), frac))
+	end,
+	size = 2,
+	getSize = fixedSize(2),
+	isFixed = true,
+}
+
+--[[
+	Vector3F16: 6-byte Vector3 using Float16 for each component.
+]]
+Types.Vector3F16 = {
+	read = function(b: buffer, cursor: number)
+		local x = Types.f16.read(b, cursor)
+		local y = Types.f16.read(b, cursor + 2)
+		local z = Types.f16.read(b, cursor + 4)
+		return Vector3.new(x, y, z)
+	end,
+	write = function(b: buffer, cursor: number, value: Vector3)
+		Types.f16.write(b, cursor, value.X)
+		Types.f16.write(b, cursor + 2, value.Y)
+		Types.f16.write(b, cursor + 4, value.Z)
+	end,
+	size = 6,
+	getSize = fixedSize(6),
+	isFixed = true,
+}
+
+--[[
 	Vector2Quantized: compressed 4-byte Vector2.
 	
 	Same quantization approach as Vector3Quantized but for 2D coordinates.
@@ -515,12 +588,19 @@ function Types.array(elementType: Type<any>): Type<{ any }>
 			read = function(b: buffer, cursor: number)
 				local bufLen = buffer.len(b)
 				local len = readu16(b, cursor)
-				local maxPossible = bufLen - cursor - 2
+				local maxPossible = (bufLen - cursor - 2) * 8
 				len = min(len, max(maxPossible, 0))
 				local arr, pos = table.create(len), cursor + 2
-				for i = 1, len do
-					arr[i] = readu8(b, pos) ~= 0
-					pos += 1
+
+				local byteLen = floor((len + 7) / 8)
+				for i = 0, byteLen - 1 do
+					local byte = readu8(b, pos + i)
+					local startIdx = i * 8 + 1
+					local endIdx = min(startIdx + 7, len)
+
+					for j = startIdx, endIdx do
+						arr[j] = bit32.band(bit32.rshift(byte, (j - 1) % 8), 1) ~= 0
+					end
 				end
 				return arr
 			end,
@@ -528,14 +608,24 @@ function Types.array(elementType: Type<any>): Type<{ any }>
 				local len = #value
 				writeu16(b, cursor, len)
 				local pos = cursor + 2
-				for i = 1, len do
-					writeu8(b, pos, value[i] and 1 or 0)
-					pos += 1
+				local byteLen = floor((len + 7) / 8)
+
+				for i = 0, byteLen - 1 do
+					local byte = 0
+					local startIdx = i * 8 + 1
+					local endIdx = min(startIdx + 7, len)
+
+					for j = startIdx, endIdx do
+						if value[j] then
+							byte = bit32.bor(byte, bit32.lshift(1, (j - 1) % 8))
+						end
+					end
+					writeu8(b, pos + i, byte)
 				end
 			end,
 			size = 2,
 			getSize = function(value: { any })
-				return 2 + #value
+				return 2 + floor((#value + 7) / 8)
 			end,
 			isFixed = false,
 		}

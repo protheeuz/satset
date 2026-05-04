@@ -1,7 +1,7 @@
 --!native
 --!optimize 2
 -- This file is part of the Satset networking library and is licensed under MIT License; see LICENSE.txt for details
--- Batcher — handles per-frame packet batching and unreliable transport hardening.
+-- Batcher — handles frame-level batching, dynamic segmentation, and rate-limited flushing.
 
 local RunService = game:GetService("RunService")
 
@@ -13,8 +13,9 @@ local IS_SERVER = RunService:IsServer()
 
 -- UnreliableRemoteEvent has a limit around 1000 bytes.
 -- We cap at 900 to stay safe.
-local RELIABLE_SPLIT_THRESHOLD = 45000
+local RELIABLE_SPLIT_THRESHOLD = 60000
 local UNRELIABLE_SPLIT_THRESHOLD = 900
+local MAX_PACKETS_PER_FRAME = 0 -- 0 means no limit (Latency Mode)
 local INITIAL_WORKING_SIZE = 65536
 
 type Stream = {
@@ -48,6 +49,24 @@ local Batcher = {}
 
 function Batcher.registerFixedSize(id: number, size: number)
 	packetFixedSizes[id] = size
+end
+
+export type BatchingConfig = {
+	reliableThreshold: number?,
+	unreliableThreshold: number?,
+	maxPacketsPerFrame: number?,
+}
+
+function Batcher.configure(config: BatchingConfig)
+	if config.reliableThreshold then
+		RELIABLE_SPLIT_THRESHOLD = config.reliableThreshold
+	end
+	if config.unreliableThreshold then
+		UNRELIABLE_SPLIT_THRESHOLD = config.unreliableThreshold
+	end
+	if config.maxPacketsPerFrame ~= nil then
+		MAX_PACKETS_PER_FRAME = config.maxPacketsPerFrame
+	end
 end
 
 local function commitStream(stream: Stream, reliable: boolean, seqCounter: number?): (buffer?, number?)
@@ -323,10 +342,18 @@ local function flush()
 				if exact then
 					table.insert(batches, exact)
 				end
-				for _, batch in batches do
-					reliableRemote:FireClient(player, batch)
+
+				local sentThisFrame = 0
+				local i = 1
+				while i <= #batches do
+					reliableRemote:FireClient(player, batches[i])
+					sentThisFrame += 1
+					table.remove(batches, i)
+
+					if MAX_PACKETS_PER_FRAME > 0 and sentThisFrame >= MAX_PACKETS_PER_FRAME then
+						break
+					end
 				end
-				table.clear(batches)
 			elseif exact then
 				reliableRemote:FireClient(player, exact)
 			end
@@ -342,10 +369,18 @@ local function flush()
 				if exact then
 					table.insert(batches, exact)
 				end
-				for _, batch in batches do
-					unreliableRemote:FireClient(player, batch)
+
+				local sentThisFrame = 0
+				local i = 1
+				while i <= #batches do
+					unreliableRemote:FireClient(player, batches[i])
+					sentThisFrame += 1
+					table.remove(batches, i)
+
+					if MAX_PACKETS_PER_FRAME > 0 and sentThisFrame >= MAX_PACKETS_PER_FRAME then
+						break
+					end
 				end
-				table.clear(batches)
 			elseif exact then
 				unreliableRemote:FireClient(player, exact)
 			end
@@ -355,20 +390,34 @@ local function flush()
 		if exact then
 			table.insert(broadcastReliableBatches, exact)
 		end
-		for _, batch in broadcastReliableBatches do
-			reliableRemote:FireAllClients(batch)
+
+		local sentThisFrame = 0
+		local i = 1
+		while i <= #broadcastReliableBatches do
+			reliableRemote:FireAllClients(broadcastReliableBatches[i])
+			sentThisFrame += 1
+			table.remove(broadcastReliableBatches, i)
+
+			if MAX_PACKETS_PER_FRAME > 0 and sentThisFrame >= MAX_PACKETS_PER_FRAME then
+				break
+			end
 		end
-		table.clear(broadcastReliableBatches)
 	else
 		local exactR, _ = commitStream(serverReliableStream, true)
 		if exactR then
 			table.insert(serverReliableBatches, exactR)
 		end
-		if #serverReliableBatches > 0 then
-			for _, batch in serverReliableBatches do
-				Bridge.getReliable():FireServer(batch)
+
+		local sentThisFrame = 0
+		local i = 1
+		while i <= #serverReliableBatches do
+			Bridge.getReliable():FireServer(serverReliableBatches[i])
+			sentThisFrame += 1
+			table.remove(serverReliableBatches, i)
+
+			if MAX_PACKETS_PER_FRAME > 0 and sentThisFrame >= MAX_PACKETS_PER_FRAME then
+				break
 			end
-			table.clear(serverReliableBatches)
 		end
 
 		local exactU, newSeq = commitStream(serverUnreliableStream, false, clientSeqCounter)
@@ -376,11 +425,17 @@ local function flush()
 		if exactU then
 			table.insert(serverUnreliableBatches, exactU)
 		end
-		if #serverUnreliableBatches > 0 then
-			for _, batch in serverUnreliableBatches do
-				Bridge.getUnreliable():FireServer(batch)
+
+		i = 1
+		local sentThisFrameU = 0
+		while i <= #serverUnreliableBatches do
+			Bridge.getUnreliable():FireServer(serverUnreliableBatches[i])
+			sentThisFrameU += 1
+			table.remove(serverUnreliableBatches, i)
+
+			if MAX_PACKETS_PER_FRAME > 0 and sentThisFrameU >= MAX_PACKETS_PER_FRAME then
+				break
 			end
-			table.clear(serverUnreliableBatches)
 		end
 	end
 end
