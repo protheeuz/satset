@@ -192,4 +192,5 @@ batching = {
 }
 ```
 
-> By setting `reliableThreshold` to 0, Satset sends payloads as a single segment. This reduces protocol overhead and allows the engine's underlying Zstd compression to work much more efficiently, often resulting in significantly lower bandwidth usage in benchmarks.
+>[!NOTE]
+>By setting `reliableThreshold` to 0, Satset sends payloads as a single segment. This reduces protocol overhead and allows the engine's underlying Zstd compression to work much more efficiently, often resulting in significantly lower bandwidth usage in benchmarks.
