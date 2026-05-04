@@ -1,0 +1,14 @@
+enhancement:
+  - head-branch: ['^feat/.*', '^feature/.*']
+
+bug:
+  - head-branch: ['^fix/.*', '^bugfix/.*']
+
+documentation:
+  - head-branch: ['^docs/.*', '^documentation/.*']
+
+performance:
+  - head-branch: ['^perf/.*']
+
+chore:
+  - head-branch: ['^chore/.*']

@@ -28,8 +28,9 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
+      contents: read
     steps:
       - name: Auto Labeling
-        uses: actions-ecosystem/action-add-labels@v1
+        uses: actions/labeler@v5
         with:
-          labels: enhancement
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
