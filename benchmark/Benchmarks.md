@@ -4,8 +4,6 @@
 
 These benchmarks compare **Satset** against native Roblox remotes and popular community libraries. To ensure a fair comparison, all metrics are normalized to a 60 FPS baseline, even when a library causes the engine's framerate to drop.
 
-Detailed results and raw data are available in [result.json](./result.json).
-
 ---
 
 ## 1. Detailed Test Results
@@ -72,6 +70,7 @@ Detailed results and raw data are available in [result.json](./result.json).
 #### Booleans: Latency Mode (Bypass Chunking)
 
 | Library | FPS (p50/min/p95) | Bandwidth (p50) | Norm. BW (p50) | Drain Duration | Sent / Recv | Loss % |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | Roblox | 50 / 49 / 52 | 54.6 KB/s | 63.5 KB/s | 11.32ms | 99.4K / 99.4K | 0.0% |
 | BridgeNet2 | 55 / 49 / 57 | 21.7 KB/s | 24.0 KB/s | 26.04ms | 107.8K / 107.8K | 0.0% |
 | ByteNet | 60 / 60 / 60 | 19.0 B/s | 18.9 B/s | 6.32ms | 119.8K / 119.8K | 0.0% |
@@ -108,6 +107,7 @@ Detailed results and raw data are available in [result.json](./result.json).
 #### Mixed Data: Latency Mode (Bypass Chunking)
 
 | Library | FPS (p50/min/p95) | Bandwidth (p50) | Norm. BW (p50) | Drain Duration | Sent / Recv | Loss % |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | Roblox | 60 / 60 / 60 | 3.9 KB/s | 3.9 KB/s | 9.31ms | 119.8K / 119.8K | 0.0% |
 | BridgeNet2 | 60 / 55 / 60 | 1.6 KB/s | 1.6 KB/s | 17.76ms | 89.8K / 89.8K | 0.0% |
 | ByteNet | 60 / 60 / 60 | 4.9 B/s | 4.9 B/s | 4.21ms | 120K / 120K | 0.0% |
