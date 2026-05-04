@@ -10,6 +10,9 @@ Initializes the networking engine. Must be called once on both server and client
 
 - **config**: Optional configuration object.
   - **guard**: Guard configuration (see [Guard API](./guard.md)).
+  - **batching**: Batching behavior.
+    - **reliableThreshold**: (number) Size in bytes before a reliable payload is segmented. Default is `60000`. Set to `0` to disable segmentation for lower latency.
+    - **maxPacketsPerFrame**: (number) Maximum number of packets to process per frame. Default is `0` (unlimited).
 
 ### `Satset.definePacket(config: PacketConfig): Packet`
 

@@ -43,9 +43,12 @@ sequenceDiagram
     Note over BT: PostSimulation fires once per frame
 
     BT->>BT: encodeBatch(queue)
+    opt payload > reliableThreshold
+        BT->>BT: segment(payload)
+    end
     Note right of BT: Wire: [u8 count][u8 id, (opt u16 size), payload]...
     BT->>BR: getReliable()
-    BR->>RE: FireServer(batchBuffer)
+    BR->>RE: FireServer(segments[])
 
     Note over RE: Crosses the network boundary
 
@@ -160,3 +163,32 @@ Satset processes incoming data through a strict validation stack before it reach
 2. **Allocation Capping (`table.create`)**: Variable-length types (arrays, strings, maps) mathematically limit their allocations based on the remaining bytes in the payload. This prevents exploiters from crashing the server with massive GC spikes.
 3. **Float Sanitization (`Sanitizer.sanitizeFloat`)**: All floating-point fields (`f32`, `f64`, `Vector3`, etc.) are clamped to prevent `NaN` and `Infinity` from propagating into game logic.
 4. **Schema Verification (`Sanitizer.checkBounds`)**: For fixed-size schema fields, the serializer checks that enough bytes remain before executing the read.
+
+## Batching Strategies
+
+Satset's batching engine can be configured to balance between raw networking performance and engine stability. This is controlled via the `batching` table in `Satset.start()`.
+
+### Stability Mode (Default)
+
+Optimized for consistent engine frame-times and reliable delivery of large data chunks.
+
+```luau
+batching = {
+    reliableThreshold = 60000, -- Segmentation at 60KB
+    maxPacketsPerFrame = 0     -- No rate limiting (default)
+}
+```yaml
+In this mode, Satset segments large payloads to stay within Roblox's internal buffer limits, preventing "packet too large" errors and ensuring the engine can process network traffic smoothly.
+```
+
+### Latency Mode
+
+Optimized for minimum overhead and maximum throughput. Recommended for competitive games with small, frequent updates.
+
+```luau
+batching = {
+    reliableThreshold = 0, -- Bypass segmentation
+    maxPacketsPerFrame = 0 
+}
+```yaml
+By setting `reliableThreshold` to 0, Satset sends payloads as a single segment. This reduces protocol overhead and allows the engine's underlying Zstd compression to work much more efficiently, often resulting in significantly lower bandwidth usage in benchmarks.

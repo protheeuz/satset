@@ -19,12 +19,22 @@ The library is built on the principle that code on the hot path should not alloc
 
 # Performance Benchmarks
 
-Satset is designed for high-throughput scenarios. We maintain a [benchmark suite](benchmark/Benchmarks.md) that measures Satset against native RemoteEvents and other established libraries:
+Satset is designed for high-throughput scenarios. We maintain a [benchmark suite](benchmark/Benchmarks.md) that measures Satset against native RemoteEvents and other established libraries.
 
-- **[ByteNet](https://github.com/ffrostfall/ByteNet)**: A buffer-based serialization library.
-- **[BridgeNet2](https://github.com/ffrostfall/BridgeNet2)**: A high-level batching library.
-- **[Warp](https://github.com/imezx/Warp)**: A rapidly-fast networking library.
-- **[Packet](https://devforum.roblox.com/t/packet-networking-library/3573907/414)**: A binary-heavy packet library with built-in rate limiting.
+## Stability vs. Latency Modes
+
+Satset offers a unique **Dual-Mode** batching engine. Users can tune the library for maximum engine stability (segmenting large payloads) or absolute minimum latency (raw throughput).
+
+| Test Case (1,000 items/frame) | Satset (Stability) | Satset (Latency) | Native Remotes | ByteNet |
+| :--- | :--- | :--- | :--- | :--- |
+| **Vectors** | 4.2 MB/s | **39.2 B/s** | 213.7 MB/s | 72.8 B/s |
+| **Strings** | 18.4 MB/s | **118.9 B/s** | 140.2 MB/s | FAIL* |
+| **Booleans** | 485.4 KB/s | **38.1 B/s** | 160.9 MB/s | 72.6 B/s |
+
+> [!NOTE]
+> **The Compression Illusion**: Satset's latency mode achieves "impossibly low" bandwidth because it bypasses engine-level batching overhead, allowing [Zstd](https://github.com/facebook/zstd) to compress the entire payload as a single segment. In standard production use (Stability Mode), Satset segments payloads at 60KB to ensure engine frame-time consistency.
+
+*\*ByteNet consistently fails to synchronize large string arrays under high-volume stress (Buffer Overflow).*
 
 Detailed methodology and raw data can be found in the [Benchmarks Report](benchmark/Benchmarks.md).
 
@@ -44,14 +54,14 @@ Contributions are welcome! Please review our **[Contribution Guide](CONTRIBUTING
 
 # Features
 
-### Hybrid Networking Engine
+## Hybrid Networking Engine
 
 Satset provides two distinct communication modes:
 
 - **Packets (Stateless)**: For one-off events like character actions or effects. These are batched automatically every frame to minimize RemoteEvent overhead.
 - **Channels (Stateful)**: The core state synchronization engine. It tracks changes to a defined schema and transmits only the dirty fields (deltas) using bitmask-based compression.
 
-### Implementation Details
+## Implementation Details
 
 - **Zero-Allocation Pipeline**: Everything happens in pre-allocated buffers. We pass arguments directly to `pcall` to avoid closure allocations on the hot path, keeping your FPS steady even under massive stress.
 - **Built-in Security**: We rely on Luau's native buffer bounds checks instead of manual Lua-level branching. If someone sends a bad payload, the global `pcall` catches it without the extra CPU cost of manual checks.
@@ -109,7 +119,7 @@ flowchart TB
     PK -->|"enqueue(id, payload)"| BT
     CH -->|"encodeDelta(bitmask)"| BT
 
-    BT -->|"flush @ PostSimulation"| BR
+    BT -->|"flush & segment"| BR
 
     BR --> RE
     BR --> URE
@@ -127,7 +137,7 @@ For a detailed step-by-step walkthrough of a packet's lifecycle, see the [Archit
 
 # Usage
 
-### Installation
+## Installation
 
 Add Satset to your `wally.toml`:
 
@@ -137,67 +147,129 @@ Satset = "bookek/satset@0.1.3"
 
 Then run `wally install`.
 
-### Initialization
+## Initialization
 
-Initialization is required on both the server and client:
+Satset must be started once on both the **Server** and **Client** before defining any packets or channels.
 
 ```luau
-local Satset = require(path.to.Satset)
-
+-- In your main Server/Client entry point
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Satset = require(ReplicatedStorage.Packages.Satset)
+ 
 Satset.start({
     guard = {
         maxTokens = 60,
         refillRate = 30,
         studioBypass = true -- Enabled by default
+    },
+    batching = {
+        reliableThreshold = 60000, -- Segmentation for stability
+        maxPacketsPerFrame = 0     -- No frame-spreading
     }
 })
 ```
 
-### Packets (Stateless)
+## Packets (Stateless Events)
+
+Packets are for "fire-and-forget" events like combat hits, chat messages, or UI triggers.
+
+**Shared Definition:**
 
 ```luau
+-- Shared/Packets.luau
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Satset = require(ReplicatedStorage.Packages.Satset)
 local Types = Satset.Types
+ 
+return {
+    Damage = Satset.definePacket({
+        name = "Damage",
+        schema = {
+            targetId = Types.u32,
+            amount = Types.u16,
+            critical = Types.bool
+        },
+        reliable = true
+    })
+}
+```
 
-local DamagePacket = Satset.definePacket({
-    name = "Damage",
-    schema = {
-        targetId = Types.u32,
-        amount = Types.u16,
-        critical = Types.u4 -- Sub-byte types for efficiency
-    },
-    reliable = true
-})
+**Server Usage:**
 
--- Sending
-DamagePacket:fireClient(player, { targetId = 123, amount = 50 })
-
--- Listening
-DamagePacket:listen(function(data, sender)
-    print(data.amount, "damage from", sender)
+```luau
+local Packets = require(path.to.Shared.Packets)
+ 
+-- Sending to specific client
+Packets.Damage:fireClient(player, { targetId = 123, amount = 50, critical = true })
+ 
+-- Listening to client events
+Packets.Damage:listen(function(data, sender)
+    print(sender.Name .. " dealt " .. data.amount .. " damage!")
 end)
 ```
 
-### Channels (Stateful)
+**Client Usage:**
 
 ```luau
-local PlayerState = Satset.defineChannel({
-    name = "PlayerState",
-    schema = {
-        health = Types.u16,
-        armor = Types.u8,
-        position = Types.Vector3Quantized(2048)
-    },
-    unreliable = true,
-    resyncInterval = 5
+local Packets = require(path.to.Shared.Packets)
+ 
+-- Sending to server
+Packets.Damage:fireServer({ targetId = 456, amount = 25, critical = false })
+ 
+-- Listening to server events
+Packets.Damage:listen(function(data)
+    print("Took " .. data.amount .. " damage!")
+end)
+```
+
+## Channels (Stateful Synchronization)
+
+Channels are for data that has "state" (like health or positions). They use **delta-compression** and are much more efficient than packets for frequent updates.
+
+**Shared Definition:**
+
+```luau
+-- Shared/Channels.luau
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Satset = require(ReplicatedStorage.Packages.Satset)
+local Types = Satset.Types
+ 
+return {
+    PlayerState = Satset.defineChannel({
+        name = "PlayerState",
+        schema = {
+            health = Types.u8,
+            position = Types.Vector3Quantized(2048)
+        },
+        unreliable = true,
+        resyncInterval = 5 -- Periodic keyframe to prevent drift
+    })
+}
+```
+
+**Server Usage:**
+
+```luau
+local Channels = require(path.to.Shared.Channels)
+ 
+-- Create an entity instance for a player
+local entity = Channels.PlayerState:create(player.UserId, {
+    health = 100,
+    position = Vector3.new(0, 5, 0)
 })
+ 
+-- Update state (only changed fields are transmitted)
+entity:set("health", 85) 
+```
 
--- Server: Update
-local entity = PlayerState:create(player.UserId)
-entity:set("health", 85) -- Only the 2-byte health field is transmitted
+**Client Usage:**
 
--- Client: Subscribe
-PlayerState:subscribe(function(entityId, state)
-    print("Entity", entityId, "is at", state.position)
+```luau
+local Channels = require(path.to.Shared.Channels)
+ 
+-- Subscribe to state changes
+Channels.PlayerState:subscribe(function(entityId, state)
+    print("Entity", entityId, "updated. Health:", state.health)
 end)
 ```
 

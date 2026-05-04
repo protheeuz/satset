@@ -10,10 +10,14 @@ In your main server and client scripts:
 local Satset = require(game:GetService("ReplicatedStorage").Packages.Satset)
 
 Satset.start({
-    -- Optional configuration
     guard = {
-        maxTokens = 60, -- Max burst capacity
-        refillRate = 30, -- Tokens refilled per second
+        maxTokens = 60,
+        refillRate = 30,
+        studioBypass = true -- Enabled by default
+    },
+    batching = {
+        reliableThreshold = 60000, -- Segmentation for stability
+        maxPacketsPerFrame = 0     -- No frame-spreading
     }
 })
 ```
