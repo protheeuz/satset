@@ -77,5 +77,6 @@ jobs:
           files: Satset-v${{ steps.changelog_info.outputs.version }}.rbxm
           fail_on_unmatched_files: true
           draft: false
+          prerelease: ${{ contains(steps.changelog_info.outputs.version, '-') }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
