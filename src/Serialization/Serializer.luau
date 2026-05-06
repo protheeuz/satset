@@ -3,8 +3,8 @@
 -- This file is part of the Satset networking library and is licensed under MIT License; see LICENSE.txt for details
 -- Serializer — handles the actual encoding and decoding of data into binary buffers.
 
-local Sanitizer = require(script.Parent.Sanitizer)
-local SchemaCompiler = require(script.Parent.SchemaCompiler)
+local Sanitizer = require("./Sanitizer")
+local SchemaCompiler = require("./SchemaCompiler")
 
 local Serializer = {}
 
@@ -71,11 +71,15 @@ end
 	
 	Includes security checks for buffer overflows and malformed float 
 	values (NaN/Infinity). Returns nil if the payload is suspicious.
+	
+	If a callback is provided, it will be called with the decoded values 
+	as arguments (Zero-Allocation path).
 ]]
 function Serializer.decodeFrom(
 	compiled: SchemaCompiler.CompiledSchema,
 	b: buffer,
-	offset: number
+	offset: number,
+	callback: ((...any) -> ())?
 ): ({ [string]: any }?, number)
 	local bufLen = buffer.len(b)
 
@@ -86,28 +90,46 @@ function Serializer.decodeFrom(
 
 	-- Compiled decoder fast-path: single bounds check, then direct read.
 	if compiled.decoder then
-		local data = compiled.decoder(b, offset)
-		return data, compiled.fixedSize :: number
+		if callback then
+			compiled.decoder(b, offset, callback)
+			return nil, compiled.fixedSize :: number
+		else
+			-- Fallback to table allocation if no callback is provided.
+			local data = {}
+			local function fill(...)
+				local args = { ... }
+				for i, field in compiled.fields do
+					data[field.name] = args[i]
+				end
+			end
+			compiled.decoder(b, offset, fill)
+			return data, compiled.fixedSize :: number
+		end
 	end
 
-	local data = {}
+	local data = if callback then nil else {}
 	local cursor = offset
+	local decodedValues = if callback then table.create(compiled.fieldCount) else nil
 
-	for _, field in compiled.fields do
-		-- Pre-read bounds check.
+	for i, field in compiled.fields do
 		if not Sanitizer.checkBounds(b, cursor, field.type.size) then
 			return nil, 0
 		end
 
 		local val = field.type.read(b, cursor)
 
-		-- We sanitize numbers at the source to ensure they are finite.
-		if type(val) == "number" then
-			val = Sanitizer.sanitizeFloat(val)
+		if callback and decodedValues then
+			decodedValues[i] = val
+		elseif data then
+			data[field.name] = val
 		end
 
-		data[field.name] = val
 		cursor += field.type.getSize(val)
+	end
+
+	if callback and decodedValues then
+		callback(table.unpack(decodedValues))
+		return nil, cursor - offset
 	end
 
 	return data, cursor - offset

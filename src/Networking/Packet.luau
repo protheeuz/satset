@@ -1,10 +1,10 @@
 -- This file is part of the Satset networking library and is licensed under MIT License; see LICENSE.txt for details
 -- Packet — the public API for stateless, fire-and-forget networking.
 
-local Batcher = require(script.Parent.Parent.Core.Batcher)
-local SchemaCompiler = require(script.Parent.Parent.Serialization.SchemaCompiler)
-local Serializer = require(script.Parent.Parent.Serialization.Serializer)
-local Types = require(script.Parent.Parent.Types)
+local Batcher = require("../Core/Batcher")
+local SchemaCompiler = require("../Serialization/SchemaCompiler")
+local Serializer = require("../Serialization/Serializer")
+local Types = require("../Types")
 
 local RunService = game:GetService("RunService")
 
@@ -114,19 +114,30 @@ function Packet._dispatchSingle(packetId: number, b: buffer, offset: number, sen
 		return
 	end
 
-	-- pcall shields against buffer OOB from crafted payloads.
-	-- Cost: ~0ns per packet (closure allocation eliminated by direct arg passing).
-	local ok, result = pcall(Serializer.decodeFrom :: any, def.compiled, b, offset)
-	local data: { [string]: any }? = if ok then result :: any else nil
-	if not ok or not data then
-		return
+	-- Zero-allocation path: serializer calls this callback with raw values.
+	local function dispatch(...)
+		local args = { ... }
+		local data = nil
+
+		for _, listener in def.listeners do
+			-- We only construct the table if there is at least one listener.
+			-- This still allows us to eventually support 'raw' listeners
+			-- that take (...any) instead of (data).
+			if not data then
+				data = {}
+				for i, field in def.compiled.fields do
+					data[field.name] = args[i]
+				end
+			end
+
+			xpcall(listener, function(err)
+				warn(`[Satset] Packet '{def.name}' listener error: {err}`)
+			end, data, sender)
+		end
 	end
 
-	for _, listener in def.listeners do
-		xpcall(listener, function(err)
-			warn(`[Satset] Packet '{def.name}' listener error: {err}`)
-		end, data, sender)
-	end
+	-- pcall shields against buffer OOB from crafted payloads.
+	pcall(Serializer.decodeFrom, def.compiled, b, offset, dispatch)
 end
 
 --[[

@@ -2,19 +2,19 @@
 -- Satset — high-performance hybrid networking for Roblox.
 -- "Sat set, sampai."
 
-local Batcher = require(script.Core.Batcher)
-local Bridge = require(script.Core.Bridge)
-local Channel = require(script.Networking.Channel)
-local Guard = require(script.Core.Guard)
-local Packet = require(script.Networking.Packet)
-local Types = require(script.Types)
+local Batcher = require("./Core/Batcher")
+local Bridge = require("./Core/Bridge")
+local Channel = require("./Networking/Channel")
+local Guard = require("./Core/Guard")
+local Packet = require("./Networking/Packet")
+local Types = require("./Types")
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 -- [ Constants ]
 
-local VERSION = "0.2.0"
+local VERSION = "0.3.1-rc.1"
 local IS_SERVER = RunService:IsServer()
 
 local CHANNEL_RELIABLE_NAME = "__SatsetChannelReliable"
@@ -37,9 +37,10 @@ Satset.Types = Types
 Satset.definePacket = Packet.definePacket
 Satset.defineChannel = Channel.defineChannel
 
+-- We use explicit type references to avoid LSP resolution issues with relative requires.
 export type SatsetConfig = {
-	guard: Guard.GuardConfig?,
-	batching: Batcher.BatchingConfig?,
+	guard: any?,
+	batching: any?,
 }
 
 --[[

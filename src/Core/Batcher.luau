@@ -5,7 +5,7 @@
 
 local RunService = game:GetService("RunService")
 
-local Bridge = require(script.Parent.Bridge)
+local Bridge = require("./Bridge")
 
 -- [ Constants ]
 

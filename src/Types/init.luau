@@ -3,35 +3,6 @@
 -- This file is part of the Satset networking library and is licensed under MIT License; see LICENSE.txt for details
 -- Types — provides optimized serialization primitives and composite types.
 
--- [ Builtin Localization ]
--- We localize these for GETIMPORT and FASTCALL optimization in the Luau VM.
-local readu8 = buffer.readu8
-local readu16 = buffer.readu16
-local readu32 = buffer.readu32
-local readi8 = buffer.readi8
-local readi16 = buffer.readi16
-local readi32 = buffer.readi32
-local readf32 = buffer.readf32
-local readf64 = buffer.readf64
-local writeu8 = buffer.writeu8
-local writeu16 = buffer.writeu16
-local writeu32 = buffer.writeu32
-local writei8 = buffer.writei8
-local writei16 = buffer.writei16
-local writei32 = buffer.writei32
-local writef32 = buffer.writef32
-local writef64 = buffer.writef64
-local readstring = buffer.readstring
-local writestring = buffer.writestring
-local clamp = math.clamp
-local round = math.round
-local sqrt = math.sqrt
-local abs = math.abs
-local max = math.max
-local min = math.min
-local huge = math.huge
-local floor = math.floor
-
 -- [ Types ]
 
 export type Type<T> = {
@@ -55,54 +26,54 @@ end
 -- Clamps NaN and ±Infinity to 0. Prevents malicious clients from
 -- injecting poisoned floats that propagate through server arithmetic.
 local function sanitizeFloat(v: number): number
-	return if v == v and v ~= huge and v ~= -huge then v else 0
+	return if v == v and v ~= math.huge and v ~= -math.huge then v else 0
 end
 
 -- [ Primitives ]
 
 Types.u8 = {
-	read = readu8,
-	write = writeu8,
+	read = buffer.readu8,
+	write = buffer.writeu8,
 	size = 1,
 	getSize = fixedSize(1),
 	isFixed = true,
 }
 
 Types.u16 = {
-	read = readu16,
-	write = writeu16,
+	read = buffer.readu16,
+	write = buffer.writeu16,
 	size = 2,
 	getSize = fixedSize(2),
 	isFixed = true,
 }
 
 Types.u32 = {
-	read = readu32,
-	write = writeu32,
+	read = buffer.readu32,
+	write = buffer.writeu32,
 	size = 4,
 	getSize = fixedSize(4),
 	isFixed = true,
 }
 
 Types.i8 = {
-	read = readi8,
-	write = writei8,
+	read = buffer.readi8,
+	write = buffer.writei8,
 	size = 1,
 	getSize = fixedSize(1),
 	isFixed = true,
 }
 
 Types.i16 = {
-	read = readi16,
-	write = writei16,
+	read = buffer.readi16,
+	write = buffer.writei16,
 	size = 2,
 	getSize = fixedSize(2),
 	isFixed = true,
 }
 
 Types.i32 = {
-	read = readi32,
-	write = writei32,
+	read = buffer.readi32,
+	write = buffer.writei32,
 	size = 4,
 	getSize = fixedSize(4),
 	isFixed = true,
@@ -110,10 +81,10 @@ Types.i32 = {
 
 Types.f32 = {
 	read = function(b: buffer, cursor: number)
-		return sanitizeFloat(readf32(b, cursor))
+		return sanitizeFloat(buffer.readf32(b, cursor))
 	end,
 	write = function(b: buffer, cursor: number, value: number)
-		writef32(b, cursor, sanitizeFloat(value))
+		buffer.writef32(b, cursor, sanitizeFloat(value))
 	end,
 	size = 4,
 	getSize = fixedSize(4),
@@ -122,10 +93,10 @@ Types.f32 = {
 
 Types.f64 = {
 	read = function(b: buffer, cursor: number)
-		return sanitizeFloat(readf64(b, cursor))
+		return sanitizeFloat(buffer.readf64(b, cursor))
 	end,
 	write = function(b: buffer, cursor: number, value: number)
-		writef64(b, cursor, sanitizeFloat(value))
+		buffer.writef64(b, cursor, sanitizeFloat(value))
 	end,
 	size = 8,
 	getSize = fixedSize(8),
@@ -134,10 +105,10 @@ Types.f64 = {
 
 Types.bool = {
 	read = function(b: buffer, cursor: number)
-		return readu8(b, cursor) ~= 0
+		return buffer.readu8(b, cursor) ~= 0
 	end,
 	write = function(b: buffer, cursor: number, value: boolean)
-		writeu8(b, cursor, value and 1 or 0)
+		buffer.writeu8(b, cursor, value and 1 or 0)
 	end,
 	size = 1,
 	getSize = fixedSize(1),
@@ -146,10 +117,10 @@ Types.bool = {
 
 Types.u4 = {
 	read = function(b: buffer, cursor: number)
-		return bit32.band(readu8(b, cursor), 0xF)
+		return bit32.band(buffer.readu8(b, cursor), 0xF)
 	end,
 	write = function(b: buffer, cursor: number, value: number)
-		writeu8(b, cursor, bit32.band(value, 0xF))
+		buffer.writeu8(b, cursor, bit32.band(value, 0xF))
 	end,
 	size = 1,
 	getSize = fixedSize(1),
@@ -160,16 +131,16 @@ Types.u4 = {
 
 Types.string8 = {
 	read = function(b: buffer, cursor: number)
-		local len = readu8(b, cursor)
+		local len = buffer.readu8(b, cursor)
 		if cursor + 1 + len > buffer.len(b) then
 			return ""
 		end
-		return readstring(b, cursor + 1, len)
+		return buffer.readstring(b, cursor + 1, len)
 	end,
 	write = function(b: buffer, cursor: number, value: string)
 		local len = #value
-		writeu8(b, cursor, len)
-		writestring(b, cursor + 1, value, len)
+		buffer.writeu8(b, cursor, len)
+		buffer.writestring(b, cursor + 1, value, len)
 	end,
 	size = 1,
 	getSize = function(value: string)
@@ -180,16 +151,16 @@ Types.string8 = {
 
 Types.string16 = {
 	read = function(b: buffer, cursor: number)
-		local len = readu16(b, cursor)
+		local len = buffer.readu16(b, cursor)
 		if cursor + 2 + len > buffer.len(b) then
 			return ""
 		end
-		return readstring(b, cursor + 2, len)
+		return buffer.readstring(b, cursor + 2, len)
 	end,
 	write = function(b: buffer, cursor: number, value: string)
 		local len = #value
-		writeu16(b, cursor, len)
-		writestring(b, cursor + 2, value, len)
+		buffer.writeu16(b, cursor, len)
+		buffer.writestring(b, cursor + 2, value, len)
 	end,
 	size = 2,
 	getSize = function(value: string)
@@ -202,20 +173,20 @@ Types.string16 = {
 
 Types.Vector3 = {
 	read = function(b: buffer, cursor: number)
-		local x = readf32(b, cursor)
-		local y = readf32(b, cursor + 4)
-		local z = readf32(b, cursor + 8)
+		local x = buffer.readf32(b, cursor)
+		local y = buffer.readf32(b, cursor + 4)
+		local z = buffer.readf32(b, cursor + 8)
 		return Vector3.new(
-			if x == x and x ~= huge and x ~= -huge then x else 0,
-			if y == y and y ~= huge and y ~= -huge then y else 0,
-			if z == z and z ~= huge and z ~= -huge then z else 0
+			if x == x and x ~= math.huge and x ~= -math.huge then x else 0,
+			if y == y and y ~= math.huge and y ~= -math.huge then y else 0,
+			if z == z and z ~= math.huge and z ~= -math.huge then z else 0
 		)
 	end,
 	write = function(b: buffer, cursor: number, value: Vector3)
 		local x, y, z = value.X, value.Y, value.Z
-		writef32(b, cursor, if x == x and x ~= huge and x ~= -huge then x else 0)
-		writef32(b, cursor + 4, if y == y and y ~= huge and y ~= -huge then y else 0)
-		writef32(b, cursor + 8, if z == z and z ~= huge and z ~= -huge then z else 0)
+		buffer.writef32(b, cursor, if x == x and x ~= math.huge and x ~= -math.huge then x else 0)
+		buffer.writef32(b, cursor + 4, if y == y and y ~= math.huge and y ~= -math.huge then y else 0)
+		buffer.writef32(b, cursor + 8, if z == z and z ~= math.huge and z ~= -math.huge then z else 0)
 	end,
 	size = 12,
 	getSize = fixedSize(12),
@@ -224,11 +195,11 @@ Types.Vector3 = {
 
 Types.Vector2 = {
 	read = function(b: buffer, cursor: number)
-		return Vector2.new(sanitizeFloat(readf32(b, cursor)), sanitizeFloat(readf32(b, cursor + 4)))
+		return Vector2.new(sanitizeFloat(buffer.readf32(b, cursor)), sanitizeFloat(buffer.readf32(b, cursor + 4)))
 	end,
 	write = function(b: buffer, cursor: number, value: Vector2)
-		writef32(b, cursor, sanitizeFloat(value.X))
-		writef32(b, cursor + 4, sanitizeFloat(value.Y))
+		buffer.writef32(b, cursor, sanitizeFloat(value.X))
+		buffer.writef32(b, cursor + 4, sanitizeFloat(value.Y))
 	end,
 	size = 8,
 	getSize = fixedSize(8),
@@ -237,15 +208,15 @@ Types.Vector2 = {
 
 Types.Color3 = {
 	read = function(b: buffer, cursor: number)
-		local r = readu8(b, cursor) / 255
-		local g = readu8(b, cursor + 1) / 255
-		local bl = readu8(b, cursor + 2) / 255
+		local r = buffer.readu8(b, cursor) / 255
+		local g = buffer.readu8(b, cursor + 1) / 255
+		local bl = buffer.readu8(b, cursor + 2) / 255
 		return Color3.new(r, g, bl)
 	end,
 	write = function(b: buffer, cursor: number, value: Color3)
-		writeu8(b, cursor, clamp(round(value.R * 255), 0, 255))
-		writeu8(b, cursor + 1, clamp(round(value.G * 255), 0, 255))
-		writeu8(b, cursor + 2, clamp(round(value.B * 255), 0, 255))
+		buffer.writeu8(b, cursor, math.clamp(math.round(value.R * 255), 0, 255))
+		buffer.writeu8(b, cursor + 1, math.clamp(math.round(value.G * 255), 0, 255))
+		buffer.writeu8(b, cursor + 2, math.clamp(math.round(value.B * 255), 0, 255))
 	end,
 	size = 3,
 	getSize = fixedSize(3),
@@ -267,15 +238,15 @@ function Types.Vector3Quantized(range: number?): Type<Vector3>
 
 	return {
 		read = function(b: buffer, cursor: number)
-			local x = readi16(b, cursor) / SCALE
-			local y = readi16(b, cursor + 2) / SCALE
-			local z = readi16(b, cursor + 4) / SCALE
+			local x = buffer.readi16(b, cursor) / SCALE
+			local y = buffer.readi16(b, cursor + 2) / SCALE
+			local z = buffer.readi16(b, cursor + 4) / SCALE
 			return Vector3.new(x, y, z)
 		end,
 		write = function(b: buffer, cursor: number, value: Vector3)
-			writei16(b, cursor, clamp(round(value.X * SCALE), -32767, 32767))
-			writei16(b, cursor + 2, clamp(round(value.Y * SCALE), -32767, 32767))
-			writei16(b, cursor + 4, clamp(round(value.Z * SCALE), -32767, 32767))
+			buffer.writei16(b, cursor, math.clamp(math.round(value.X * SCALE), -32767, 32767))
+			buffer.writei16(b, cursor + 2, math.clamp(math.round(value.Y * SCALE), -32767, 32767))
+			buffer.writei16(b, cursor + 4, math.clamp(math.round(value.Z * SCALE), -32767, 32767))
 		end,
 		size = 6,
 		getSize = fixedSize(6),
@@ -290,12 +261,12 @@ end
 ]]
 Types.f16 = {
 	read = function(b: buffer, cursor: number)
-		local raw = readu16(b, cursor)
+		local raw = buffer.readu16(b, cursor)
 		local sign = (bit32.band(raw, 0x8000) ~= 0) and -1 or 1
 		local exp = bit32.rshift(bit32.band(raw, 0x7C00), 10)
 		local frac = bit32.band(raw, 0x03FF)
 		if exp == 0x1F then
-			return (frac == 0) and (sign * huge) or 0 -- NaN as 0 for safety
+			return (frac == 0) and (sign * math.huge) or 0 -- NaN as 0 for safety
 		elseif exp == 0 then
 			return sign * (2 ^ -14) * (frac / 1024)
 		else
@@ -304,7 +275,7 @@ Types.f16 = {
 	end,
 	write = function(b: buffer, cursor: number, value: number)
 		if value ~= value then
-			writeu16(b, cursor, 0)
+			buffer.writeu16(b, cursor, 0)
 			return
 		end
 		local sign = 0
@@ -318,18 +289,18 @@ Types.f16 = {
 		elseif value <= 2 ^ -24 then
 			exp, frac = 0, 0
 		elseif value < 2 ^ -14 then
-			exp, frac = 0, round(value / (2 ^ -24))
+			exp, frac = 0, math.round(value / (2 ^ -24))
 		else
 			local log2 = math.log(value, 2)
-			exp = floor(log2)
-			frac = round((value / (2 ^ exp) - 1) * 1024)
+			exp = math.floor(log2)
+			frac = math.round((value / (2 ^ exp) - 1) * 1024)
 			if frac == 1024 then
 				exp += 1
 				frac = 0
 			end
 			exp += 15
 		end
-		writeu16(b, cursor, bit32.bor(sign, bit32.lshift(exp, 10), frac))
+		buffer.writeu16(b, cursor, bit32.bor(sign, bit32.lshift(exp, 10), frac))
 	end,
 	size = 2,
 	getSize = fixedSize(2),
@@ -368,13 +339,13 @@ function Types.Vector2Quantized(range: number?): Type<Vector2>
 
 	return {
 		read = function(b: buffer, cursor: number)
-			local x = readi16(b, cursor) / SCALE
-			local y = readi16(b, cursor + 2) / SCALE
+			local x = buffer.readi16(b, cursor) / SCALE
+			local y = buffer.readi16(b, cursor + 2) / SCALE
 			return Vector2.new(x, y)
 		end,
 		write = function(b: buffer, cursor: number, value: Vector2)
-			writei16(b, cursor, clamp(round(value.X * SCALE), -32767, 32767))
-			writei16(b, cursor + 2, clamp(round(value.Y * SCALE), -32767, 32767))
+			buffer.writei16(b, cursor, math.clamp(math.round(value.X * SCALE), -32767, 32767))
+			buffer.writei16(b, cursor + 2, math.clamp(math.round(value.Y * SCALE), -32767, 32767))
 		end,
 		size = 4,
 		getSize = fixedSize(4),
@@ -391,12 +362,12 @@ end
 ]]
 Types.CFrame = {
 	read = function(b: buffer, cursor: number)
-		local px = sanitizeFloat(readf32(b, cursor))
-		local py = sanitizeFloat(readf32(b, cursor + 4))
-		local pz = sanitizeFloat(readf32(b, cursor + 8))
-		local raw_a = readi16(b, cursor + 12)
-		local raw_b = readi16(b, cursor + 14)
-		local raw_c = readi16(b, cursor + 16)
+		local px = sanitizeFloat(buffer.readf32(b, cursor))
+		local py = sanitizeFloat(buffer.readf32(b, cursor + 4))
+		local pz = sanitizeFloat(buffer.readf32(b, cursor + 8))
+		local raw_a = buffer.readi16(b, cursor + 12)
+		local raw_b = buffer.readi16(b, cursor + 14)
+		local raw_c = buffer.readi16(b, cursor + 16)
 
 		local largest = bit32.band(bit32.rshift(bit32.band(raw_a, 0xFFFF), 14), 3)
 		local va = bit32.band(raw_a, 0x3FFF)
@@ -409,7 +380,7 @@ Types.CFrame = {
 		local b_val = raw_b / 32767 * 0.7071067811865476
 		local c_val = raw_c / 32767 * 0.7071067811865476
 
-		local d = sqrt(max(0, 1 - (a * a + b_val * b_val + c_val * c_val)))
+		local d = math.sqrt(math.max(0, 1 - (a * a + b_val * b_val + c_val * c_val)))
 		local qx, qy, qz, qw
 		if largest == 0 then
 			qw, qx, qy, qz = d, a, b_val, c_val
@@ -444,9 +415,9 @@ Types.CFrame = {
 
 	write = function(b: buffer, cursor: number, value: CFrame)
 		local components = { value:GetComponents() }
-		writef32(b, cursor, sanitizeFloat(components[1]))
-		writef32(b, cursor + 4, sanitizeFloat(components[2]))
-		writef32(b, cursor + 8, sanitizeFloat(components[3]))
+		buffer.writef32(b, cursor, sanitizeFloat(components[1]))
+		buffer.writef32(b, cursor + 4, sanitizeFloat(components[2]))
+		buffer.writef32(b, cursor + 8, sanitizeFloat(components[3]))
 
 		local r00, r01, r02 = components[4], components[5], components[6]
 		local r10, r11, r12 = components[7], components[8], components[9]
@@ -455,23 +426,23 @@ Types.CFrame = {
 		local trace = r00 + r11 + r22
 		local qw, qx, qy, qz
 		if trace > 0 then
-			local s = sqrt(trace + 1) * 2
+			local s = math.sqrt(trace + 1) * 2
 			qw, qx, qy, qz = 0.25 * s, (r21 - r12) / s, (r02 - r20) / s, (r10 - r01) / s
 		elseif r00 > r11 and r00 > r22 then
-			local s = sqrt(1 + r00 - r11 - r22) * 2
+			local s = math.sqrt(1 + r00 - r11 - r22) * 2
 			qw, qx, qy, qz = (r21 - r12) / s, 0.25 * s, (r01 + r10) / s, (r02 + r20) / s
 		elseif r11 > r22 then
-			local s = sqrt(1 + r11 - r00 - r22) * 2
+			local s = math.sqrt(1 + r11 - r00 - r22) * 2
 			qw, qx, qy, qz = (r02 - r20) / s, (r01 + r10) / s, 0.25 * s, (r12 + r21) / s
 		else
-			local s = sqrt(1 + r22 - r00 - r11) * 2
+			local s = math.sqrt(1 + r22 - r00 - r11) * 2
 			qw, qx, qy, qz = (r10 - r01) / s, (r02 + r20) / s, (r12 + r21) / s, 0.25 * s
 		end
 
-		local mag = sqrt(qw * qw + qx * qx + qy * qy + qz * qz)
+		local mag = math.sqrt(qw * qw + qx * qx + qy * qy + qz * qz)
 		qw, qx, qy, qz = qw / mag, qx / mag, qy / mag, qz / mag
 
-		local abs_w, abs_x, abs_y, abs_z = abs(qw), abs(qx), abs(qy), abs(qz)
+		local abs_w, abs_x, abs_y, abs_z = math.abs(qw), math.abs(qx), math.abs(qy), math.abs(qz)
 		local largest, max_val = 0, abs_w
 		if abs_x > max_val then
 			largest, max_val = 1, abs_x
@@ -500,13 +471,13 @@ Types.CFrame = {
 		end
 
 		local QSCALE_INV = 8191 / 0.7071067811865476
-		local enc_a = clamp(round(a * QSCALE_INV), -8191, 8191)
+		local enc_a = math.clamp(math.round(a * QSCALE_INV), -8191, 8191)
 		local packed_a = bit32.bor(bit32.band(enc_a, 0x3FFF), bit32.lshift(largest, 14))
 
-		writeu16(b, cursor + 12, packed_a)
+		buffer.writeu16(b, cursor + 12, packed_a)
 		local QSCALE_B = 32767 / 0.7071067811865476
-		writei16(b, cursor + 14, clamp(round(b_val * QSCALE_B), -32767, 32767))
-		writei16(b, cursor + 16, clamp(round(c_val * QSCALE_B), -32767, 32767))
+		buffer.writei16(b, cursor + 14, math.clamp(math.round(b_val * QSCALE_B), -32767, 32767))
+		buffer.writei16(b, cursor + 16, math.clamp(math.round(c_val * QSCALE_B), -32767, 32767))
 	end,
 	size = 18,
 	getSize = fixedSize(18),
@@ -518,16 +489,16 @@ Types.CFrame = {
 function Types.optional(innerType: Type<any>): Type<any>
 	return {
 		read = function(b: buffer, cursor: number)
-			if readu8(b, cursor) == 0 then
+			if buffer.readu8(b, cursor) == 0 then
 				return nil
 			end
 			return innerType.read(b, cursor + 1)
 		end,
 		write = function(b: buffer, cursor: number, value: any)
 			if value == nil then
-				writeu8(b, cursor, 0)
+				buffer.writeu8(b, cursor, 0)
 			else
-				writeu8(b, cursor, 1)
+				buffer.writeu8(b, cursor, 1)
 				innerType.write(b, cursor + 1, value)
 			end
 		end,
@@ -546,19 +517,19 @@ function Types.array(elementType: Type<any>): Type<{ any }>
 		return {
 			read = function(b: buffer, cursor: number)
 				local bufLen = buffer.len(b)
-				local len = readu16(b, cursor)
+				local len = buffer.readu16(b, cursor)
 				-- Cap allocation: exploiter can't claim 65535 elements in a tiny buffer.
-				local maxPossible = floor((bufLen - cursor - 2) / 12)
-				len = min(len, max(maxPossible, 0))
+				local maxPossible = math.floor((bufLen - cursor - 2) / 12)
+				len = math.min(len, math.max(maxPossible, 0))
 				local arr, pos = table.create(len), cursor + 2
 				for i = 1, len do
-					local x = readf32(b, pos)
-					local y = readf32(b, pos + 4)
-					local z = readf32(b, pos + 8)
+					local x = buffer.readf32(b, pos)
+					local y = buffer.readf32(b, pos + 4)
+					local z = buffer.readf32(b, pos + 8)
 					arr[i] = Vector3.new(
-						if x == x and x ~= huge and x ~= -huge then x else 0,
-						if y == y and y ~= huge and y ~= -huge then y else 0,
-						if z == z and z ~= huge and z ~= -huge then z else 0
+						if x == x and x ~= math.huge and x ~= -math.huge then x else 0,
+						if y == y and y ~= math.huge and y ~= -math.huge then y else 0,
+						if z == z and z ~= math.huge and z ~= -math.huge then z else 0
 					)
 					pos += 12
 				end
@@ -566,14 +537,14 @@ function Types.array(elementType: Type<any>): Type<{ any }>
 			end,
 			write = function(b: buffer, cursor: number, value: { any })
 				local len = #value
-				writeu16(b, cursor, len)
+				buffer.writeu16(b, cursor, len)
 				local pos = cursor + 2
 				for i = 1, len do
 					local val = value[i]
 					local x, y, z = val.X, val.Y, val.Z
-					writef32(b, pos, if x == x and x ~= huge and x ~= -huge then x else 0)
-					writef32(b, pos + 4, if y == y and y ~= huge and y ~= -huge then y else 0)
-					writef32(b, pos + 8, if z == z and z ~= huge and z ~= -huge then z else 0)
+					buffer.writef32(b, pos, if x == x and x ~= math.huge and x ~= -math.huge then x else 0)
+					buffer.writef32(b, pos + 4, if y == y and y ~= math.huge and y ~= -math.huge then y else 0)
+					buffer.writef32(b, pos + 8, if z == z and z ~= math.huge and z ~= -math.huge then z else 0)
 					pos += 12
 				end
 			end,
@@ -587,16 +558,16 @@ function Types.array(elementType: Type<any>): Type<{ any }>
 		return {
 			read = function(b: buffer, cursor: number)
 				local bufLen = buffer.len(b)
-				local len = readu16(b, cursor)
+				local len = buffer.readu16(b, cursor)
 				local maxPossible = (bufLen - cursor - 2) * 8
-				len = min(len, max(maxPossible, 0))
+				len = math.min(len, math.max(maxPossible, 0))
 				local arr, pos = table.create(len), cursor + 2
 
-				local byteLen = floor((len + 7) / 8)
+				local byteLen = math.floor((len + 7) / 8)
 				for i = 0, byteLen - 1 do
-					local byte = readu8(b, pos + i)
+					local byte = buffer.readu8(b, pos + i)
 					local startIdx = i * 8 + 1
-					local endIdx = min(startIdx + 7, len)
+					local endIdx = math.min(startIdx + 7, len)
 
 					for j = startIdx, endIdx do
 						arr[j] = bit32.band(bit32.rshift(byte, (j - 1) % 8), 1) ~= 0
@@ -606,26 +577,26 @@ function Types.array(elementType: Type<any>): Type<{ any }>
 			end,
 			write = function(b: buffer, cursor: number, value: { any })
 				local len = #value
-				writeu16(b, cursor, len)
+				buffer.writeu16(b, cursor, len)
 				local pos = cursor + 2
-				local byteLen = floor((len + 7) / 8)
+				local byteLen = math.floor((len + 7) / 8)
 
 				for i = 0, byteLen - 1 do
 					local byte = 0
 					local startIdx = i * 8 + 1
-					local endIdx = min(startIdx + 7, len)
+					local endIdx = math.min(startIdx + 7, len)
 
 					for j = startIdx, endIdx do
 						if value[j] then
 							byte = bit32.bor(byte, bit32.lshift(1, (j - 1) % 8))
 						end
 					end
-					writeu8(b, pos + i, byte)
+					buffer.writeu8(b, pos + i, byte)
 				end
 			end,
 			size = 2,
 			getSize = function(value: { any })
-				return 2 + floor((#value + 7) / 8)
+				return 2 + math.floor((#value + 7) / 8)
 			end,
 			isFixed = false,
 		}
@@ -633,26 +604,26 @@ function Types.array(elementType: Type<any>): Type<{ any }>
 		return {
 			read = function(b: buffer, cursor: number)
 				local bufLen = buffer.len(b)
-				local len = readu16(b, cursor)
+				local len = buffer.readu16(b, cursor)
 				local maxPossible = bufLen - cursor - 2
-				len = min(len, max(maxPossible, 0))
+				len = math.min(len, math.max(maxPossible, 0))
 				local arr, pos = table.create(len), cursor + 2
 				for i = 1, len do
-					local strLen = readu8(b, pos)
-					arr[i] = readstring(b, pos + 1, strLen)
+					local strLen = buffer.readu8(b, pos)
+					arr[i] = buffer.readstring(b, pos + 1, strLen)
 					pos += 1 + strLen
 				end
 				return arr
 			end,
 			write = function(b: buffer, cursor: number, value: { any })
 				local len = #value
-				writeu16(b, cursor, len)
+				buffer.writeu16(b, cursor, len)
 				local pos = cursor + 2
 				for i = 1, len do
 					local str = value[i]
 					local strLen = #str
-					writeu8(b, pos, strLen)
-					writestring(b, pos + 1, str, strLen)
+					buffer.writeu8(b, pos, strLen)
+					buffer.writestring(b, pos + 1, str, strLen)
 					pos += 1 + strLen
 				end
 			end,
@@ -670,26 +641,26 @@ function Types.array(elementType: Type<any>): Type<{ any }>
 		return {
 			read = function(b: buffer, cursor: number)
 				local bufLen = buffer.len(b)
-				local len = readu16(b, cursor)
+				local len = buffer.readu16(b, cursor)
 				local maxPossible = bufLen - cursor - 2
-				len = min(len, max(maxPossible, 0))
+				len = math.min(len, math.max(maxPossible, 0))
 				local arr, pos = table.create(len), cursor + 2
 				for i = 1, len do
-					local strLen = readu16(b, pos)
-					arr[i] = readstring(b, pos + 2, strLen)
+					local strLen = buffer.readu16(b, pos)
+					arr[i] = buffer.readstring(b, pos + 2, strLen)
 					pos += 2 + strLen
 				end
 				return arr
 			end,
 			write = function(b: buffer, cursor: number, value: { any })
 				local len = #value
-				writeu16(b, cursor, len)
+				buffer.writeu16(b, cursor, len)
 				local pos = cursor + 2
 				for i = 1, len do
 					local str = value[i]
 					local strLen = #str
-					writeu16(b, pos, strLen)
-					writestring(b, pos + 2, str, strLen)
+					buffer.writeu16(b, pos, strLen)
+					buffer.writestring(b, pos + 2, str, strLen)
 					pos += 2 + strLen
 				end
 			end,
@@ -707,22 +678,22 @@ function Types.array(elementType: Type<any>): Type<{ any }>
 		return {
 			read = function(b: buffer, cursor: number)
 				local bufLen = buffer.len(b)
-				local len = readu16(b, cursor)
+				local len = buffer.readu16(b, cursor)
 				local maxPossible = bufLen - cursor - 2
-				len = min(len, max(maxPossible, 0))
+				len = math.min(len, math.max(maxPossible, 0))
 				local arr, pos = table.create(len), cursor + 2
 				for i = 1, len do
-					arr[i] = readu8(b, pos)
+					arr[i] = buffer.readu8(b, pos)
 					pos += 1
 				end
 				return arr
 			end,
 			write = function(b: buffer, cursor: number, value: { any })
 				local len = #value
-				writeu16(b, cursor, len)
+				buffer.writeu16(b, cursor, len)
 				local pos = cursor + 2
 				for i = 1, len do
-					writeu8(b, pos, value[i])
+					buffer.writeu8(b, pos, value[i])
 					pos += 1
 				end
 			end,
@@ -736,22 +707,22 @@ function Types.array(elementType: Type<any>): Type<{ any }>
 		return {
 			read = function(b: buffer, cursor: number)
 				local bufLen = buffer.len(b)
-				local len = readu16(b, cursor)
-				local maxPossible = floor((bufLen - cursor - 2) / 4)
-				len = min(len, max(maxPossible, 0))
+				local len = buffer.readu16(b, cursor)
+				local maxPossible = math.floor((bufLen - cursor - 2) / 4)
+				len = math.min(len, math.max(maxPossible, 0))
 				local arr, pos = table.create(len), cursor + 2
 				for i = 1, len do
-					arr[i] = sanitizeFloat(readf32(b, pos))
+					arr[i] = sanitizeFloat(buffer.readf32(b, pos))
 					pos += 4
 				end
 				return arr
 			end,
 			write = function(b: buffer, cursor: number, value: { any })
 				local len = #value
-				writeu16(b, cursor, len)
+				buffer.writeu16(b, cursor, len)
 				local pos = cursor + 2
 				for i = 1, len do
-					writef32(b, pos, sanitizeFloat(value[i]))
+					buffer.writef32(b, pos, sanitizeFloat(value[i]))
 					pos += 4
 				end
 			end,
@@ -772,9 +743,9 @@ function Types.array(elementType: Type<any>): Type<{ any }>
 		return {
 			read = function(b: buffer, cursor: number)
 				local bufLen = buffer.len(b)
-				local len = readu16(b, cursor)
-				local maxPossible = floor((bufLen - cursor - 2) / step)
-				len = min(len, max(maxPossible, 0))
+				local len = buffer.readu16(b, cursor)
+				local maxPossible = math.floor((bufLen - cursor - 2) / step)
+				len = math.min(len, math.max(maxPossible, 0))
 				local arr, pos = table.create(len), cursor + 2
 				for i = 1, len do
 					arr[i] = elemRead(b, pos)
@@ -784,7 +755,7 @@ function Types.array(elementType: Type<any>): Type<{ any }>
 			end,
 			write = function(b: buffer, cursor: number, value: { any })
 				local len = #value
-				writeu16(b, cursor, len)
+				buffer.writeu16(b, cursor, len)
 				local pos = cursor + 2
 				for i = 1, len do
 					elemWrite(b, pos, value[i])
@@ -803,9 +774,9 @@ function Types.array(elementType: Type<any>): Type<{ any }>
 	return {
 		read = function(b: buffer, cursor: number)
 			local bufLen = buffer.len(b)
-			local len = readu16(b, cursor)
+			local len = buffer.readu16(b, cursor)
 			local maxPossible = bufLen - cursor - 2
-			len = min(len, max(maxPossible, 0))
+			len = math.min(len, math.max(maxPossible, 0))
 			local arr, pos = table.create(len), cursor + 2
 
 			for i = 1, len do
@@ -817,7 +788,7 @@ function Types.array(elementType: Type<any>): Type<{ any }>
 		end,
 		write = function(b: buffer, cursor: number, value: { any })
 			local len = #value
-			writeu16(b, cursor, len)
+			buffer.writeu16(b, cursor, len)
 			local pos = cursor + 2
 
 			for i = 1, len do
@@ -842,10 +813,10 @@ function Types.map(keyType: Type<any>, valueType: Type<any>): Type<{ [any]: any 
 	return {
 		read = function(b: buffer, cursor: number)
 			local bufLen = buffer.len(b)
-			local count = readu16(b, cursor)
+			local count = buffer.readu16(b, cursor)
 			-- Cap iteration count: can't have more entries than remaining bytes.
 			local maxPossible = bufLen - cursor - 2
-			count = min(count, max(maxPossible, 0))
+			count = math.min(count, math.max(maxPossible, 0))
 			local result, pos = {}, cursor + 2
 			local kFixed, vFixed = keyType.isFixed, valueType.isFixed
 			local kStep, vStep = keyType.size, valueType.size
@@ -870,7 +841,7 @@ function Types.map(keyType: Type<any>, valueType: Type<any>): Type<{ [any]: any 
 				return tostring(a) < tostring(b_key)
 			end)
 
-			writeu16(b, cursor, n)
+			buffer.writeu16(b, cursor, n)
 			local pos = cursor + 2
 			local kFixed, vFixed = keyType.isFixed, valueType.isFixed
 			local kStep, vStep = keyType.size, valueType.size
@@ -912,11 +883,11 @@ function Types.enum(values: { string }): Type<string>
 
 	return {
 		read = function(b: buffer, cursor: number)
-			local idx = readu8(b, cursor)
+			local idx = buffer.readu8(b, cursor)
 			return toValue[idx] or values[1]
 		end,
 		write = function(b: buffer, cursor: number, value: string)
-			writeu8(b, cursor, toIndex[value] or 0)
+			buffer.writeu8(b, cursor, toIndex[value] or 0)
 		end,
 		size = 1,
 		getSize = fixedSize(1),
